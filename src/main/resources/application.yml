@@ -1,3 +1,32 @@
+server:
+  port: 9000
+  shutdown: graceful
+
+app:
+  developer:
+    email: ${DEV_EMAIL}
+    default-password: ${DEV_PASSWORD}
+
 spring:
   application:
     name: NBP
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+
+  # Gmail SMTP Server Settings
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
