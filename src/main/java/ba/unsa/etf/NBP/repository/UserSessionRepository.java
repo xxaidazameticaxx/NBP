@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,13 +61,24 @@ public class UserSessionRepository {
         jdbcTemplate.update(sql, id);
     }
 
+    public int deleteByUserId(Long userId) {
+        String sql = "DELETE FROM NBP_USER_SESSION WHERE USER_ID = ?";
+        return jdbcTemplate.update(sql, userId);
+    }
+
     public List<UserSession> findByUserId(Long userId) {
         String sql = "SELECT * FROM NBP_USER_SESSION WHERE USER_ID = ?";
         return jdbcTemplate.query(sql, rowMapper, userId);
     }
 
-    public void deleteBySessionId(String sessionId) {
+    public int deleteBySessionId(String sessionId) {
         String sql = "DELETE FROM NBP_USER_SESSION WHERE SESSION_ID = ?";
-        jdbcTemplate.update(sql, sessionId);
+        return jdbcTemplate.update(sql, sessionId);
+    }
+
+    public Optional<UserSession> findActiveBySessionId(String sessionId, LocalDateTime now) {
+        String sql = "SELECT * FROM NBP_USER_SESSION WHERE SESSION_ID = ? AND EXPIRES_AT > ?";
+        List<UserSession> results = jdbcTemplate.query(sql, rowMapper, sessionId, java.sql.Timestamp.valueOf(now));
+        return results.stream().findFirst();
     }
 }
