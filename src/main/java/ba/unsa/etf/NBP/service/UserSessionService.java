@@ -37,8 +37,8 @@ public class UserSessionService {
         userSessionRepository.deleteById(id);
     }
 
-    public int deleteByUserId(Long userId) {
-        return userSessionRepository.deleteByUserId(userId);
+    public void deleteByUserId(Long userId) {
+        userSessionRepository.deleteById(userId);
     }
 
     public List<UserSession> findByUserId(Long userId) {

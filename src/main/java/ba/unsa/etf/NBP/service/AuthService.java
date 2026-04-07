@@ -47,7 +47,7 @@ public class AuthService {
             return Optional.empty();
         }
 
-        userSessionRepository.deleteByUserId(user.getId());
+        userSessionRepository.deleteById(user.getId());
 
         String newSessionId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();

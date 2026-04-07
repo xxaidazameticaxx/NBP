@@ -1,10 +1,15 @@
 package ba.unsa.etf.NBP.controller;
 
+import ba.unsa.etf.NBP.dto.session.CourseSessionResponse;
 import ba.unsa.etf.NBP.model.Course;
+import ba.unsa.etf.NBP.model.User;
+import ba.unsa.etf.NBP.service.AuthService;
 import ba.unsa.etf.NBP.service.CourseService;
+import ba.unsa.etf.NBP.service.CourseSessionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -13,9 +18,13 @@ import java.util.List;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CourseSessionService courseSessionService;
+    private final AuthService authService;
 
-    public CourseController(CourseService courseService) {
+    public CourseController(CourseService courseService, CourseSessionService courseSessionService, AuthService authService) {
         this.courseService = courseService;
+        this.courseSessionService = courseSessionService;
+        this.authService = authService;
     }
 
     @GetMapping
@@ -59,5 +68,15 @@ public class CourseController {
     public ResponseEntity<List<Course>> findByDepartmentId(@PathVariable Long departmentId) {
         List<Course> courses = courseService.findByDepartmentId(departmentId);
         return ResponseEntity.ok(courses);
+    }
+
+    @GetMapping("/{courseId}/sessions")
+    public ResponseEntity<List<CourseSessionResponse>> getCourseSessionHistory(
+            @PathVariable Long courseId,
+            @RequestHeader(AuthService.SESSION_HEADER) String sessionId) {
+        User currentUser = authService.authenticateSession(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid session"));
+        List<CourseSessionResponse> sessions = courseSessionService.getCourseSessionHistory(courseId, currentUser);
+        return ResponseEntity.ok(sessions);
     }
 }

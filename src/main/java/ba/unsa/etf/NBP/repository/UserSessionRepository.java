@@ -55,15 +55,10 @@ public class UserSessionRepository {
                 userSession.getExpiresAt() != null ? java.sql.Timestamp.valueOf(userSession.getExpiresAt()) : null,
                 userSession.getSessionId());
     }
-
-    public void deleteById(Long id) {
+    
+        public void deleteById(Long id) {
         String sql = "DELETE FROM NBP_USER_SESSION WHERE USER_ID = ?";
         jdbcTemplate.update(sql, id);
-    }
-
-    public int deleteByUserId(Long userId) {
-        String sql = "DELETE FROM NBP_USER_SESSION WHERE USER_ID = ?";
-        return jdbcTemplate.update(sql, userId);
     }
 
     public List<UserSession> findByUserId(Long userId) {
