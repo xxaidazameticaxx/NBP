@@ -1,5 +1,6 @@
 package ba.unsa.etf.NBP.service;
 
+import ba.unsa.etf.NBP.dto.enrollment.EnrolledStudentDto;
 import ba.unsa.etf.NBP.model.Student;
 import ba.unsa.etf.NBP.repository.StudentRepository;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,10 @@ public class StudentService {
         return studentRepository.findById(id);
     }
 
+    public Optional<Student> findByUserId(Long userId) {
+        return studentRepository.findByUserId(userId);
+    }
+
     public void save(Student student) {
         studentRepository.save(student);
     }
@@ -34,5 +39,9 @@ public class StudentService {
 
     public void deleteById(Long id) {
         studentRepository.deleteById(id);
+    }
+
+    public List<EnrolledStudentDto> findRosterByCourseId(Long courseId) {
+        return studentRepository.findRosterByCourseId(courseId);
     }
 }

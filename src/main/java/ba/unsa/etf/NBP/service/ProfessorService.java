@@ -24,6 +24,10 @@ public class ProfessorService {
         return professorRepository.findById(id);
     }
 
+    public Optional<Professor> findByUserId(Long userId) {
+        return professorRepository.findByUserId(userId);
+    }
+
     public void save(Professor professor) {
         professorRepository.save(professor);
     }

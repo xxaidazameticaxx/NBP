@@ -1,5 +1,6 @@
 package ba.unsa.etf.NBP.repository;
 
+import ba.unsa.etf.NBP.dto.enrollment.StudentCourseDto;
 import ba.unsa.etf.NBP.model.Enrollment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -68,5 +69,33 @@ public class EnrollmentRepository {
     public List<Enrollment> findByCourseId(Long courseId) {
         String sql = "SELECT * FROM NBP_ENROLLMENT WHERE COURSE_ID = ?";
         return jdbcTemplate.query(sql, rowMapper, courseId);
+    }
+
+    public boolean existsByStudentIdAndCourseId(Long studentId, Long courseId) {
+        String sql = "SELECT COUNT(*) FROM NBP_ENROLLMENT WHERE STUDENT_ID = ? AND COURSE_ID = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, studentId, courseId);
+
+        return count != null && count > 0;
+    }
+
+    public List<StudentCourseDto> findCoursesByStudentIdWithDetails(Long studentId) {
+        String sql = "SELECT c.ID AS COURSE_ID, c.NAME, c.CODE, c.PROFESSOR_ID, e.ENROLLMENT_DATE " +
+                "FROM NBP_ENROLLMENT e " +
+                "JOIN NBP_COURSE c ON e.COURSE_ID = c.ID " +
+                "WHERE e.STUDENT_ID = ?";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            StudentCourseDto dto = new StudentCourseDto();
+            dto.setCourseId(rs.getLong("COURSE_ID"));
+            dto.setCourseName(rs.getString("NAME"));
+            dto.setCourseCode(rs.getString("CODE"));
+            dto.setProfessorId(rs.getLong("PROFESSOR_ID"));
+
+            java.sql.Date eDate = rs.getDate("ENROLLMENT_DATE");
+            if (eDate != null) {
+                dto.setEnrollmentDate(eDate.toLocalDate());
+            }
+            return dto;
+        }, studentId);
     }
 }
