@@ -68,10 +68,4 @@ public class ProfessorRepository {
         String sql = "DELETE FROM NBP_PROFESSOR WHERE ID = ?";
         jdbcTemplate.update(sql, id);
     }
-
-    public Optional<Professor> findByUserId(Long userId) {
-        String sql = "SELECT * FROM NBP_PROFESSOR WHERE USER_ID = ?";
-        List<Professor> results = jdbcTemplate.query(sql, rowMapper, userId);
-        return results.stream().findFirst();
-    }
 }

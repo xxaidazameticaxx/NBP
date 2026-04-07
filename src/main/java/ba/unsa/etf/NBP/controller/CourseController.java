@@ -3,10 +3,9 @@ package ba.unsa.etf.NBP.controller;
 import ba.unsa.etf.NBP.dto.session.CourseSessionResponse;
 import ba.unsa.etf.NBP.dto.enrollment.EnrolledStudentDto;
 import ba.unsa.etf.NBP.model.Course;
-import ba.unsa.etf.NBP.model.User;
-import ba.unsa.etf.NBP.service.AuthService;
 import ba.unsa.etf.NBP.model.Professor;
 import ba.unsa.etf.NBP.model.User;
+import ba.unsa.etf.NBP.service.AuthService;
 import ba.unsa.etf.NBP.service.CourseService;
 import ba.unsa.etf.NBP.service.CourseSessionService;
 import ba.unsa.etf.NBP.service.EnrollmentService;
@@ -96,7 +95,6 @@ public class CourseController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid session"));
         List<CourseSessionResponse> sessions = courseSessionService.getCourseSessionHistory(courseId, currentUser);
         return ResponseEntity.ok(sessions);
-        }
     }
 
     @GetMapping("/{courseId}/students")
