@@ -77,4 +77,11 @@ public class AttendanceRepository {
         String sql = "SELECT * FROM NBP_ATTENDANCE WHERE COURSE_SESSION_ID = ?";
         return jdbcTemplate.query(sql, rowMapper, courseSessionId);
     }
+
+    public void deleteByStudentIdAndCourseId(Long studentId, Long courseId) {
+        String sql = "DELETE FROM NBP_ATTENDANCE " +
+                "WHERE STUDENT_ID = ? AND COURSE_SESSION_ID IN " +
+                "(SELECT ID FROM NBP_COURSE_SESSION WHERE COURSE_ID = ?)";
+        jdbcTemplate.update(sql, studentId, courseId);
+    }
 }

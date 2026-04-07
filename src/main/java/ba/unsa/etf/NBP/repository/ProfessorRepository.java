@@ -38,6 +38,12 @@ public class ProfessorRepository {
         return results.stream().findFirst();
     }
 
+    public Optional<Professor> findByUserId(Long userId) {
+        String sql = "SELECT * FROM NBP_PROFESSOR WHERE USER_ID = ?";
+        List<Professor> results = jdbcTemplate.query(sql, rowMapper, userId);
+        return results.stream().findFirst();
+    }
+
     public void save(Professor professor) {
         String sql = "INSERT INTO NBP_PROFESSOR (ID, USER_ID, TITLE, DEPARTMENT_ID, OFFICE_LOCATION) VALUES (?, ?, ?, ?, ?)";
         jdbcTemplate.update(sql,
