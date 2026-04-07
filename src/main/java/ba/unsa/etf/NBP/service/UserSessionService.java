@@ -4,6 +4,7 @@ import ba.unsa.etf.NBP.model.UserSession;
 import ba.unsa.etf.NBP.repository.UserSessionRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,11 +37,19 @@ public class UserSessionService {
         userSessionRepository.deleteById(id);
     }
 
+    public int deleteByUserId(Long userId) {
+        return userSessionRepository.deleteByUserId(userId);
+    }
+
     public List<UserSession> findByUserId(Long userId) {
         return userSessionRepository.findByUserId(userId);
     }
 
-    public void deleteBySessionId(String sessionId) {
-        userSessionRepository.deleteBySessionId(sessionId);
+    public int deleteBySessionId(String sessionId) {
+        return userSessionRepository.deleteBySessionId(sessionId);
+    }
+
+    public Optional<UserSession> findActiveBySessionId(String sessionId, LocalDateTime now) {
+        return userSessionRepository.findActiveBySessionId(sessionId, now);
     }
 }
