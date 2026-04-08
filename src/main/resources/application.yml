@@ -1,6 +1,8 @@
 server:
   port: 9000
   shutdown: graceful
+  error:
+    include-message: always
 
 app:
   developer:

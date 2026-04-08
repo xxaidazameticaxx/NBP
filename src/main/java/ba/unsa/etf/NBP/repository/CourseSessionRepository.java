@@ -5,6 +5,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
+
+import java.sql.PreparedStatement;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,5 +77,40 @@ public class CourseSessionRepository {
     public void deleteById(Long id) {
         String sql = "DELETE FROM NBP_COURSE_SESSION WHERE ID = ?";
         jdbcTemplate.update(sql, id);
+    }
+
+    public Optional<CourseSession> findOpenByCourseId(Long courseId) {
+        String sql = "SELECT * FROM NBP_COURSE_SESSION WHERE COURSE_ID = ? AND SESSION_END_TIME IS NULL";
+        List<CourseSession> results = jdbcTemplate.query(sql, rowMapper, courseId);
+        return results.stream().findFirst();
+    }
+
+    public boolean existsBySessionCode(String sessionCode) {
+        String sql = "SELECT COUNT(*) FROM NBP_COURSE_SESSION WHERE SESSION_CODE = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, sessionCode);
+        return count != null && count > 0;
+    }
+
+    public List<CourseSession> findByCourseIdOrderByStartTime(Long courseId) {
+        String sql = "SELECT * FROM NBP_COURSE_SESSION WHERE COURSE_ID = ? ORDER BY SESSION_START_TIME";
+        return jdbcTemplate.query(sql, rowMapper, courseId);
+    }
+
+    public Long saveAndReturnId(CourseSession courseSession) {
+        String sql = "INSERT INTO NBP_COURSE_SESSION (COURSE_ID, SESSION_START_TIME, SESSION_END_TIME, SESSION_CODE, ROOM_ID, TIMETABLE_ID, SESSION_TYPE) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, new String[]{"ID"});
+            ps.setLong(1, courseSession.getCourseId());
+            ps.setTimestamp(2, courseSession.getSessionStartTime() != null ? java.sql.Timestamp.valueOf(courseSession.getSessionStartTime()) : null);
+            ps.setTimestamp(3, courseSession.getSessionEndTime() != null ? java.sql.Timestamp.valueOf(courseSession.getSessionEndTime()) : null);
+            ps.setString(4, courseSession.getSessionCode());
+            ps.setLong(5, courseSession.getRoomId());
+            ps.setObject(6, courseSession.getTimetableId());
+            ps.setString(7, courseSession.getSessionType());
+            return ps;
+        }, keyHolder);
+        return keyHolder.getKey().longValue();
     }
 }

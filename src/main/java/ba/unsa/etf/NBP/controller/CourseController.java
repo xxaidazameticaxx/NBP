@@ -1,11 +1,13 @@
 package ba.unsa.etf.NBP.controller;
 
+import ba.unsa.etf.NBP.dto.session.CourseSessionResponse;
 import ba.unsa.etf.NBP.dto.enrollment.EnrolledStudentDto;
 import ba.unsa.etf.NBP.model.Course;
 import ba.unsa.etf.NBP.model.Professor;
 import ba.unsa.etf.NBP.model.User;
 import ba.unsa.etf.NBP.service.AuthService;
 import ba.unsa.etf.NBP.service.CourseService;
+import ba.unsa.etf.NBP.service.CourseSessionService;
 import ba.unsa.etf.NBP.service.EnrollmentService;
 import ba.unsa.etf.NBP.service.ProfessorService;
 import ba.unsa.etf.NBP.service.StudentService;
@@ -21,20 +23,24 @@ import java.util.List;
 public class CourseController {
 
     private final CourseService courseService;
+    private final CourseSessionService courseSessionService;
+    private final AuthService authService;
     private final EnrollmentService enrollmentService;
     private final ProfessorService professorService;
-    private final AuthService authService;
     private final StudentService studentService;
 
-    public CourseController(CourseService courseService,
+    public CourseController(CourseService courseService, 
+                            CourseSessionService courseSessionService,
                             EnrollmentService enrollmentService,
                             ProfessorService professorService,
                             AuthService authService,
-                            StudentService studentService) {
+                            StudentService studentService) 
+    {
         this.courseService = courseService;
+        this.courseSessionService = courseSessionService;
+        this.authService = authService;
         this.enrollmentService = enrollmentService;
         this.professorService = professorService;
-        this.authService = authService;
         this.studentService = studentService;
     }
 
@@ -79,6 +85,16 @@ public class CourseController {
     public ResponseEntity<List<Course>> findByDepartmentId(@PathVariable Long departmentId) {
         List<Course> courses = courseService.findByDepartmentId(departmentId);
         return ResponseEntity.ok(courses);
+    }
+
+    @GetMapping("/{courseId}/sessions")
+    public ResponseEntity<List<CourseSessionResponse>> getCourseSessionHistory(
+            @PathVariable Long courseId,
+            @RequestHeader(AuthService.SESSION_HEADER) String sessionId) {
+        User currentUser = authService.authenticateSession(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid session"));
+        List<CourseSessionResponse> sessions = courseSessionService.getCourseSessionHistory(courseId, currentUser);
+        return ResponseEntity.ok(sessions);
     }
 
     @GetMapping("/{courseId}/students")

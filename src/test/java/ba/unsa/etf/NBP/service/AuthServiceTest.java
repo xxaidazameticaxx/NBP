@@ -82,7 +82,7 @@ class AuthServiceTest {
 
         assertFalse(result.isPresent());
         verify(userSessionRepository, never()).save(any());
-        verify(userSessionRepository, never()).deleteByUserId(any());
+        verify(userSessionRepository, never()).deleteById(any());
     }
 
     @Test
@@ -103,7 +103,7 @@ class AuthServiceTest {
         assertEquals(user.getId(), response.getUserId());
         assertEquals("Student", response.getRoleName());
 
-        verify(userSessionRepository, times(1)).deleteByUserId(user.getId());
+        verify(userSessionRepository, times(1)).deleteById(user.getId());
         ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
         verify(userSessionRepository, times(1)).save(sessionCaptor.capture());
 
