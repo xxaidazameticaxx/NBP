@@ -32,6 +32,7 @@ public class SessionFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return path.startsWith("/auth/login")
+                || path.startsWith("/auth/refresh")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/swagger-ui")
                 || path.equals("/swagger-ui.html")
@@ -43,13 +44,13 @@ public class SessionFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String sessionId = request.getHeader(AuthService.SESSION_HEADER);
-        if (sessionId == null || sessionId.isBlank()) {
+        String authorizationHeader = request.getHeader(AuthService.AUTHORIZATION_HEADER);
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return;
         }
 
-        Optional<User> authenticatedUser = authService.authenticateSession(sessionId);
+        Optional<User> authenticatedUser = authService.authenticateSession(authorizationHeader);
         if (authenticatedUser.isEmpty()) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return;

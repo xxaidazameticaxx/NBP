@@ -46,12 +46,10 @@ public class EnrollmentController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> save(
-            @RequestBody Enrollment enrollment,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
+    public ResponseEntity<Void> save(@RequestBody Enrollment enrollment) {
 
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
+        User currentUser = authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
         if (currentUser.getRole() == null || currentUser.getRole().getId() != 3L) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only administrators can enroll students");
@@ -83,12 +81,10 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteById(
-            @PathVariable Long id,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
+    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
 
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
+        User currentUser = authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
         if (currentUser.getRole() == null || currentUser.getRole().getId() != 3L) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only administrators can unenroll students");

@@ -2,7 +2,6 @@ package ba.unsa.etf.NBP.controller;
 
 import ba.unsa.etf.NBP.dto.enrollment.StudentCourseDto;
 import ba.unsa.etf.NBP.model.Attendance;
-import ba.unsa.etf.NBP.model.Enrollment;
 import ba.unsa.etf.NBP.model.Student;
 import ba.unsa.etf.NBP.model.User;
 import ba.unsa.etf.NBP.service.AttendanceService;
@@ -64,12 +63,10 @@ public class StudentController {
     }
 
     @GetMapping("/{studentId}/courses")
-    public ResponseEntity<List<StudentCourseDto>> getEnrolledCourses(
-            @PathVariable Long studentId,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
+    public ResponseEntity<List<StudentCourseDto>> getEnrolledCourses(@PathVariable Long studentId) {
 
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
+        User currentUser = authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
         Student targetStudent = studentService.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
@@ -85,12 +82,10 @@ public class StudentController {
     }
 
     @GetMapping("/{studentId}/attendance")
-    public ResponseEntity<List<Attendance>> getStudentAttendance(
-            @PathVariable Long studentId,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
+    public ResponseEntity<List<Attendance>> getStudentAttendance(@PathVariable Long studentId) {
 
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
+        User currentUser = authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
         Student targetStudent = studentService.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));

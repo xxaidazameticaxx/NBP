@@ -88,22 +88,18 @@ public class CourseController {
     }
 
     @GetMapping("/{courseId}/sessions")
-    public ResponseEntity<List<CourseSessionResponse>> getCourseSessionHistory(
-            @PathVariable Long courseId,
-            @RequestHeader(AuthService.SESSION_HEADER) String sessionId) {
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid session"));
+    public ResponseEntity<List<CourseSessionResponse>> getCourseSessionHistory(@PathVariable Long courseId) {
+        User currentUser = authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
         List<CourseSessionResponse> sessions = courseSessionService.getCourseSessionHistory(courseId, currentUser);
         return ResponseEntity.ok(sessions);
     }
 
     @GetMapping("/{courseId}/students")
-    public ResponseEntity<List<EnrolledStudentDto>> getClassRoster(
-            @PathVariable Long courseId,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
+    public ResponseEntity<List<EnrolledStudentDto>> getClassRoster(@PathVariable Long courseId) {
 
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
+        User currentUser = authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
         Course course = courseService.findById(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));

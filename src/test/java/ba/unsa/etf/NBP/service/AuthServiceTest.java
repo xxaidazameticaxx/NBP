@@ -9,6 +9,8 @@ import ba.unsa.etf.NBP.model.User;
 import ba.unsa.etf.NBP.model.UserSession;
 import ba.unsa.etf.NBP.repository.UserRepository;
 import ba.unsa.etf.NBP.repository.UserSessionRepository;
+import ba.unsa.etf.NBP.security.JwtTokenService;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -46,11 +49,14 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private JwtTokenService jwtTokenService;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, userSessionRepository, passwordEncoder);
+        authService = new AuthService(userRepository, userSessionRepository, passwordEncoder, jwtTokenService);
     }
 
     @Test
@@ -90,6 +96,8 @@ class AuthServiceTest {
         User user = buildUser();
         when(userRepository.findByUsername("john")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("secret", user.getPassword())).thenReturn(true);
+        when(jwtTokenService.createAccessToken(eq(user), anyString())).thenReturn("access-token");
+        when(jwtTokenService.createRefreshToken(eq(user), anyString())).thenReturn("refresh-token");
 
         LoginRequest request = new LoginRequest();
         request.setUsername("john");
@@ -99,6 +107,8 @@ class AuthServiceTest {
 
         assertTrue(result.isPresent());
         AuthUserResponse response = result.get();
+        assertEquals("access-token", response.getAccessToken());
+        assertEquals("refresh-token", response.getRefreshToken());
         assertNotNull(response.getSessionId());
         assertEquals(user.getId(), response.getUserId());
         assertEquals("Student", response.getRoleName());
@@ -116,9 +126,13 @@ class AuthServiceTest {
 
     @Test
     void getCurrentUserBySessionReturnsEmptyWhenSessionExpiredOrMissing() {
+        Claims claims = org.mockito.Mockito.mock(Claims.class);
+        when(jwtTokenService.parseClaims("access-token")).thenReturn(Optional.of(claims));
+        when(jwtTokenService.isRefreshToken(claims)).thenReturn(false);
+        when(jwtTokenService.extractSessionId(claims)).thenReturn("fake");
         when(userSessionRepository.findActiveBySessionId(eq("fake"), any(LocalDateTime.class))).thenReturn(Optional.empty());
 
-        Optional<AuthUserResponse> result = authService.getCurrentUserBySession("fake");
+        Optional<AuthUserResponse> result = authService.getCurrentUserByToken("Bearer access-token");
 
         assertFalse(result.isPresent());
         verify(userRepository, never()).findById(any());
@@ -128,15 +142,22 @@ class AuthServiceTest {
     void getCurrentUserBySessionReturnsMappedUserWhenSessionIsValid() {
         User user = buildUser();
         UserSession session = new UserSession("session-1", user.getId(), LocalDateTime.now(), LocalDateTime.now().plusMinutes(30));
+        Claims claims = org.mockito.Mockito.mock(Claims.class);
+        when(jwtTokenService.parseClaims("access-token")).thenReturn(Optional.of(claims));
+        when(jwtTokenService.isRefreshToken(claims)).thenReturn(false);
+        when(jwtTokenService.extractSessionId(claims)).thenReturn("session-1");
+        when(jwtTokenService.createAccessToken(eq(user), eq("session-1"))).thenReturn("new-access");
 
         when(userSessionRepository.findActiveBySessionId(eq("session-1"), any(LocalDateTime.class))).thenReturn(Optional.of(session));
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
-        Optional<AuthUserResponse> result = authService.getCurrentUserBySession("session-1");
+        Optional<AuthUserResponse> result = authService.getCurrentUserByToken("Bearer access-token");
 
         assertTrue(result.isPresent());
         AuthUserResponse response = result.get();
+        assertEquals("new-access", response.getAccessToken());
         assertEquals("session-1", response.getSessionId());
+        assertNull(response.getRefreshToken());
         assertEquals(user.getEmail(), response.getEmail());
         assertEquals(user.getRole().getRoleName(), response.getRoleName());
     }
@@ -145,11 +166,16 @@ class AuthServiceTest {
     void authenticateSessionReturnsUserForValidSession() {
         User user = buildUser();
         UserSession session = new UserSession("session-2", user.getId(), LocalDateTime.now(), LocalDateTime.now().plusMinutes(30));
+        Claims claims = org.mockito.Mockito.mock(Claims.class);
+
+        when(jwtTokenService.parseClaims("access-token")).thenReturn(Optional.of(claims));
+        when(jwtTokenService.isRefreshToken(claims)).thenReturn(false);
+        when(jwtTokenService.extractSessionId(claims)).thenReturn("session-2");
 
         when(userSessionRepository.findActiveBySessionId(eq("session-2"), any(LocalDateTime.class))).thenReturn(Optional.of(session));
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
-        Optional<User> result = authService.authenticateSession("session-2");
+        Optional<User> result = authService.authenticateSession("Bearer access-token");
 
         assertTrue(result.isPresent());
         assertSame(user, result.get());
@@ -157,8 +183,54 @@ class AuthServiceTest {
 
     @Test
     void logoutDeletesSessionBySessionId() {
-        authService.logout("session-3");
+        Claims claims = org.mockito.Mockito.mock(Claims.class);
+        when(jwtTokenService.parseClaims("access-token")).thenReturn(Optional.of(claims));
+        when(jwtTokenService.isRefreshToken(claims)).thenReturn(false);
+        when(jwtTokenService.extractSessionId(claims)).thenReturn("session-3");
+
+        authService.logout("Bearer access-token");
         verify(userSessionRepository, times(1)).deleteBySessionId("session-3");
+    }
+
+    @Test
+    void refreshRotatesSessionAndReturnsNewTokens() {
+        User user = buildUser();
+        UserSession session = new UserSession("old-session", user.getId(), LocalDateTime.now().minusHours(1), LocalDateTime.now().minusMinutes(1));
+        Claims claims = org.mockito.Mockito.mock(Claims.class);
+
+        when(jwtTokenService.parseClaims("refresh-token")).thenReturn(Optional.of(claims));
+        when(jwtTokenService.isRefreshToken(claims)).thenReturn(true);
+        when(jwtTokenService.extractUserId(claims)).thenReturn(user.getId());
+        when(jwtTokenService.extractSessionId(claims)).thenReturn("old-session");
+        when(userSessionRepository.findById("old-session")).thenReturn(Optional.of(session));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(jwtTokenService.createAccessToken(eq(user), anyString())).thenReturn("new-access-token");
+        when(jwtTokenService.createRefreshToken(eq(user), anyString())).thenReturn("new-refresh-token");
+
+        Optional<AuthUserResponse> result = authService.refresh("refresh-token");
+
+        assertTrue(result.isPresent());
+        assertEquals("new-access-token", result.get().getAccessToken());
+        assertEquals("new-refresh-token", result.get().getRefreshToken());
+        verify(userSessionRepository).deleteBySessionId("old-session");
+        verify(userSessionRepository).save(any(UserSession.class));
+    }
+
+    @Test
+    void refreshFailsWhenOriginalSessionWasDeleted() {
+        User user = buildUser();
+        Claims claims = org.mockito.Mockito.mock(Claims.class);
+
+        when(jwtTokenService.parseClaims("refresh-token")).thenReturn(Optional.of(claims));
+        when(jwtTokenService.isRefreshToken(claims)).thenReturn(true);
+        when(jwtTokenService.extractUserId(claims)).thenReturn(user.getId());
+        when(jwtTokenService.extractSessionId(claims)).thenReturn("deleted-session");
+        when(userSessionRepository.findById("deleted-session")).thenReturn(Optional.empty());
+
+        Optional<AuthUserResponse> result = authService.refresh("refresh-token");
+
+        assertFalse(result.isPresent());
+        verify(userSessionRepository, never()).save(any(UserSession.class));
     }
 
     @Test
