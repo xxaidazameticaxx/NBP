@@ -46,9 +46,8 @@ public class StudentRepository {
     }
 
     public void save(Student student) {
-        String sql = "INSERT INTO NBP_STUDENT (ID, USER_ID, INDEX_NUMBER, STUDY_PROGRAM_ID, ENROLLMENT_YEAR) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO NBP_STUDENT (USER_ID, INDEX_NUMBER, STUDY_PROGRAM_ID, ENROLLMENT_YEAR) VALUES (?, ?, ?, ?)";
         jdbcTemplate.update(sql,
-                student.getId(),
                 student.getUserId(),
                 student.getIndexNumber(),
                 student.getStudyProgramId(),

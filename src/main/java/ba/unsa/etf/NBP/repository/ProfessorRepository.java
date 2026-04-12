@@ -45,9 +45,8 @@ public class ProfessorRepository {
     }
 
     public void save(Professor professor) {
-        String sql = "INSERT INTO NBP_PROFESSOR (ID, USER_ID, TITLE, DEPARTMENT_ID, OFFICE_LOCATION) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO NBP_PROFESSOR (USER_ID, TITLE, DEPARTMENT_ID, OFFICE_LOCATION) VALUES (?, ?, ?, ?)";
         jdbcTemplate.update(sql,
-                professor.getId(),
                 professor.getUserId(),
                 professor.getTitle(),
                 professor.getDepartmentId(),

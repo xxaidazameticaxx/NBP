@@ -1,10 +1,21 @@
 package ba.unsa.etf.NBP.controller;
 
 import ba.unsa.etf.NBP.model.Notification;
+import ba.unsa.etf.NBP.model.User;
+import ba.unsa.etf.NBP.service.AuthService;
 import ba.unsa.etf.NBP.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -13,9 +24,11 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final AuthService authService;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService, AuthService authService) {
         this.notificationService = notificationService;
+        this.authService = authService;
     }
 
     @GetMapping
@@ -47,6 +60,25 @@ public class NotificationController {
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {
         notificationService.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/read")
+    public ResponseEntity<Void> markAsRead(
+            @PathVariable Long id,
+            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
+
+        User currentUser = authService.authenticateSession(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
+
+        Notification notification = notificationService.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
+
+        if (!notification.getUserId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only mark your own notifications as read");
+        }
+
+        notificationService.markAsRead(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/user/{userId}")

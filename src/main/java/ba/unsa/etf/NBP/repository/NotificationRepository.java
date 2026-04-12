@@ -75,12 +75,17 @@ public class NotificationRepository {
     }
 
     public List<Notification> findByUserId(Long userId) {
-        String sql = "SELECT * FROM NBP_NOTIFICATION WHERE USER_ID = ?";
+        String sql = "SELECT * FROM NBP_NOTIFICATION WHERE USER_ID = ? ORDER BY CREATED_AT DESC";
         return jdbcTemplate.query(sql, rowMapper, userId);
     }
 
     public List<Notification> findUnreadByUserId(Long userId) {
-        String sql = "SELECT * FROM NBP_NOTIFICATION WHERE USER_ID = ? AND IS_READ = 0";
+        String sql = "SELECT * FROM NBP_NOTIFICATION WHERE USER_ID = ? AND IS_READ = 0 ORDER BY CREATED_AT DESC";
         return jdbcTemplate.query(sql, rowMapper, userId);
+    }
+
+    public void markAsRead(Long id) {
+        String sql = "UPDATE NBP_NOTIFICATION SET IS_READ = 1 WHERE ID = ?";
+        jdbcTemplate.update(sql, id);
     }
 }
