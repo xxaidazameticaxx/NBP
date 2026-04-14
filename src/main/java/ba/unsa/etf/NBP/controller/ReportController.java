@@ -22,28 +22,19 @@ import java.util.List;
 public class ReportController {
 
     private final ReportService reportService;
-    private final AuthService authService;
     private final CourseService courseService;
     private final StudentService studentService;
 
     public ReportController(ReportService reportService,
-                            AuthService authService,
                             CourseService courseService,
                             StudentService studentService) {
         this.reportService = reportService;
-        this.authService = authService;
         this.courseService = courseService;
         this.studentService = studentService;
     }
 
     @GetMapping("/course/{courseId}")
-    public ResponseEntity<List<CourseAttendanceReportDto>> getCourseAttendanceReport(
-            @PathVariable Long courseId,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
-
-        authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
-
+    public ResponseEntity<List<CourseAttendanceReportDto>> getCourseAttendanceReport(@PathVariable Long courseId) {
         courseService.findById(courseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
 
@@ -52,13 +43,7 @@ public class ReportController {
     }
 
     @GetMapping("/student/{studentId}")
-    public ResponseEntity<List<StudentAttendanceReportDto>> getStudentAttendanceReport(
-            @PathVariable Long studentId,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
-
-        authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
-
+    public ResponseEntity<List<StudentAttendanceReportDto>> getStudentAttendanceReport(@PathVariable Long studentId) {
         studentService.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
 
