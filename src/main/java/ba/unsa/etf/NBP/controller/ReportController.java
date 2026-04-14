@@ -2,7 +2,6 @@ package ba.unsa.etf.NBP.controller;
 
 import ba.unsa.etf.NBP.dto.report.CourseAttendanceReportDto;
 import ba.unsa.etf.NBP.dto.report.StudentAttendanceReportDto;
-import ba.unsa.etf.NBP.service.AuthService;
 import ba.unsa.etf.NBP.service.CourseService;
 import ba.unsa.etf.NBP.service.ReportService;
 import ba.unsa.etf.NBP.service.StudentService;
@@ -10,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;

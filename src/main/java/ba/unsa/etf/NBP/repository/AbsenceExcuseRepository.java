@@ -3,9 +3,13 @@ package ba.unsa.etf.NBP.repository;
 import ba.unsa.etf.NBP.model.AbsenceExcuse;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Repository
@@ -69,5 +73,46 @@ public class AbsenceExcuseRepository {
     public void deleteById(Long id) {
         String sql = "DELETE FROM NBP_ABSENCE_EXCUSE WHERE ID = ?";
         jdbcTemplate.update(sql, id);
+    }
+
+    public Long saveAndReturnId(AbsenceExcuse absenceExcuse) {
+        String sql = "INSERT INTO NBP_ABSENCE_EXCUSE (STUDENT_ID, COURSE_SESSION_ID, REASON, SUBMITTED_AT, STATUS, REVIEWED_BY) VALUES (?, ?, ?, ?, ?, ?)";
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(sql, new String[]{"ID"});
+            ps.setLong(1, absenceExcuse.getStudentId());
+            ps.setLong(2, absenceExcuse.getCourseSessionId());
+            ps.setString(3, absenceExcuse.getReason());
+            ps.setTimestamp(4, absenceExcuse.getSubmittedAt() != null
+                    ? java.sql.Timestamp.valueOf(absenceExcuse.getSubmittedAt()) : null);
+            ps.setString(5, absenceExcuse.getStatus());
+            ps.setObject(6, absenceExcuse.getReviewedBy());
+            return ps;
+        }, keyHolder);
+        return Objects.requireNonNull(keyHolder.getKey()).longValue();
+    }
+
+    public List<AbsenceExcuse> findByStudentId(Long studentId) {
+        String sql = "SELECT * FROM NBP_ABSENCE_EXCUSE WHERE STUDENT_ID = ?";
+        return jdbcTemplate.query(sql, rowMapper, studentId);
+    }
+
+    public List<AbsenceExcuse> findByCourseSessionId(Long courseSessionId) {
+        String sql = "SELECT * FROM NBP_ABSENCE_EXCUSE WHERE COURSE_SESSION_ID = ?";
+        return jdbcTemplate.query(sql, rowMapper, courseSessionId);
+    }
+
+    public Optional<AbsenceExcuse> findByStudentIdAndCourseSessionId(Long studentId, Long courseSessionId) {
+        String sql = "SELECT * FROM NBP_ABSENCE_EXCUSE WHERE STUDENT_ID = ? AND COURSE_SESSION_ID = ?";
+        List<AbsenceExcuse> results = jdbcTemplate.query(sql, rowMapper, studentId, courseSessionId);
+        return results.stream().findFirst();
+    }
+
+    public List<AbsenceExcuse> findPendingByProfessorId(Long professorId) {
+        String sql = "SELECT ae.* FROM NBP_ABSENCE_EXCUSE ae " +
+                     "JOIN NBP_COURSE_SESSION cs ON ae.COURSE_SESSION_ID = cs.ID " +
+                     "JOIN NBP_COURSE c ON cs.COURSE_ID = c.ID " +
+                     "WHERE ae.STATUS = 'PENDING' AND c.PROFESSOR_ID = ?";
+        return jdbcTemplate.query(sql, rowMapper, professorId);
     }
 }

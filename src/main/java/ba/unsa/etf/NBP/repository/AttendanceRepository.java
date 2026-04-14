@@ -84,4 +84,10 @@ public class AttendanceRepository {
                 "(SELECT ID FROM NBP_COURSE_SESSION WHERE COURSE_ID = ?)";
         jdbcTemplate.update(sql, studentId, courseId);
     }
+
+    public Optional<Attendance> findByStudentIdAndCourseSessionId(Long studentId, Long courseSessionId) {
+        String sql = "SELECT * FROM NBP_ATTENDANCE WHERE STUDENT_ID = ? AND COURSE_SESSION_ID = ?";
+        List<Attendance> results = jdbcTemplate.query(sql, rowMapper, studentId, courseSessionId);
+        return results.stream().findFirst();
+    }
 }
