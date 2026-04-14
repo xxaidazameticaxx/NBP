@@ -16,6 +16,7 @@ Spring Boot application connecting to the shared ETF Oracle database.
    | `DB_URL` | Oracle JDBC URL (`jdbc:oracle:thin:@<host>:<port>:<sid>`) |
    | `DB_USERNAME` | Database username |
    | `DB_PASSWORD` | Database password |
+   | `JWT_SECRET` | JWT signing secret (required, use at least 32 characters) |
 
 ## Login
 
@@ -47,6 +48,7 @@ The app will be available at `http://localhost:9000`.
 export DB_URL=jdbc:oracle:thin:@<host>:1521:<sid>
 export DB_USERNAME=your_username
 export DB_PASSWORD=your_password
+export JWT_SECRET=very_long_random_secret_at_least_32_characters
 
 ./mvnw spring-boot:run
 ```

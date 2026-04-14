@@ -8,6 +8,11 @@ app:
   developer:
     email: ${DEV_EMAIL}
     default-password: ${DEV_PASSWORD}
+  auth:
+    jwt-secret: ${JWT_SECRET}
+    jwt-issuer: ${JWT_ISSUER:nbp-app}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:30}
+    refresh-token-minutes: ${JWT_REFRESH_TOKEN_MINUTES:10080}
 
 spring:
   application:

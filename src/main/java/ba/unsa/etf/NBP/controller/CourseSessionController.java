@@ -59,24 +59,21 @@ public class CourseSessionController {
     @PostMapping("/{courseId}/open")
     public ResponseEntity<CourseSessionResponse> openSession(
             @PathVariable Long courseId,
-            @RequestBody(required = false) OpenSessionRequest request,
-            @RequestHeader(AuthService.SESSION_HEADER) String sessionId) {
-        User currentUser = getAuthenticatedUser(sessionId);
+            @RequestBody(required = false) OpenSessionRequest request) {
+        User currentUser = getAuthenticatedUser();
         CourseSessionResponse response = courseSessionService.openSession(courseId, request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}/close")
-    public ResponseEntity<CourseSessionResponse> closeSession(
-            @PathVariable Long id,
-            @RequestHeader(AuthService.SESSION_HEADER) String sessionId) {
-        User currentUser = getAuthenticatedUser(sessionId);
+    public ResponseEntity<CourseSessionResponse> closeSession(@PathVariable Long id) {
+        User currentUser = getAuthenticatedUser();
         CourseSessionResponse response = courseSessionService.closeSession(id, currentUser);
         return ResponseEntity.ok(response);
     }
 
-private User getAuthenticatedUser(String sessionId) {
-        return authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid session"));
+    private User getAuthenticatedUser() {
+        return authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
     }
 }
