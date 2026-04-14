@@ -9,7 +9,6 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
 import java.sql.PreparedStatement;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -81,6 +80,12 @@ public class CourseSessionRepository {
     public Optional<CourseSession> findOpenByCourseId(Long courseId) {
         String sql = "SELECT * FROM NBP_COURSE_SESSION WHERE COURSE_ID = ? AND SESSION_END_TIME IS NULL";
         List<CourseSession> results = jdbcTemplate.query(sql, rowMapper, courseId);
+        return results.stream().findFirst();
+    }
+
+    public Optional<CourseSession> findBySessionCode(String sessionCode) {
+        String sql = "SELECT * FROM NBP_COURSE_SESSION WHERE SESSION_CODE = ?";
+        List<CourseSession> results = jdbcTemplate.query(sql, rowMapper, sessionCode);
         return results.stream().findFirst();
     }
 

@@ -22,18 +22,21 @@ public class CourseSessionService {
     private final ProfessorRepository professorRepository;
     private final TimetableRepository timetableRepository;
     private final RoomRepository roomRepository;
+    private final AttendanceService attendanceService;
     private final Random random = new Random();
 
     public CourseSessionService(CourseSessionRepository courseSessionRepository,
                                 CourseRepository courseRepository,
                                 ProfessorRepository professorRepository,
                                 TimetableRepository timetableRepository,
-                                RoomRepository roomRepository) {
+                                RoomRepository roomRepository,
+                                AttendanceService attendanceService) {
         this.courseSessionRepository = courseSessionRepository;
         this.courseRepository = courseRepository;
         this.professorRepository = professorRepository;
         this.timetableRepository = timetableRepository;
         this.roomRepository = roomRepository;
+        this.attendanceService = attendanceService;
     }
 
     public List<CourseSession> findAll() {
@@ -123,7 +126,7 @@ public class CourseSessionService {
         session.setSessionEndTime(LocalDateTime.now());
         courseSessionRepository.update(session);
 
-        // TODO: Call Batch 3's auto-mark absent method here
+        attendanceService.autoMarkAbsentForSession(session);
 
         Room room = roomRepository.findById(session.getRoomId()).orElse(null);
         return toResponse(session, room);
