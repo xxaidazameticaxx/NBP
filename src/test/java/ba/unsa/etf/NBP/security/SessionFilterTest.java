@@ -14,7 +14,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -59,11 +58,11 @@ class SessionFilterTest {
     @Test
     void protectedRequestWithInvalidHeaderReturnsUnauthorized() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/students");
-        request.addHeader(AuthService.SESSION_HEADER, "fake-session");
+        request.addHeader(AuthService.AUTHORIZATION_HEADER, "Bearer fake-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 
-        when(authService.authenticateSession("fake-session")).thenReturn(Optional.empty());
+        when(authService.authenticateSession("Bearer fake-token")).thenReturn(Optional.empty());
 
         sessionFilter.doFilter(request, response, filterChain);
 
@@ -73,7 +72,7 @@ class SessionFilterTest {
     @Test
     void protectedRequestWithValidSessionSetsAuthentication() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/students");
-        request.addHeader(AuthService.SESSION_HEADER, "valid-session");
+        request.addHeader(AuthService.AUTHORIZATION_HEADER, "Bearer valid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 
@@ -81,7 +80,7 @@ class SessionFilterTest {
         user.setId(42L);
         user.setUsername("john");
         user.setRole(new Role(1L, "Student"));
-        when(authService.authenticateSession("valid-session")).thenReturn(Optional.of(user));
+        when(authService.authenticateSession("Bearer valid-token")).thenReturn(Optional.of(user));
 
         sessionFilter.doFilter(request, response, filterChain);
 
@@ -95,6 +94,18 @@ class SessionFilterTest {
     @Test
     void loginEndpointIsExcludedFromSessionValidation() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/login");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain filterChain = new MockFilterChain();
+
+        sessionFilter.doFilter(request, response, filterChain);
+
+        assertEquals(200, response.getStatus());
+        verify(authService, never()).authenticateSession(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void refreshEndpointIsExcludedFromSessionValidation() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 

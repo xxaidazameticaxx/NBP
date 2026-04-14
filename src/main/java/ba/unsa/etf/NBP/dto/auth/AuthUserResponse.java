@@ -2,6 +2,8 @@ package ba.unsa.etf.NBP.dto.auth;
 
 public class AuthUserResponse {
 
+    private String accessToken;
+    private String refreshToken;
     private String sessionId;
     private Long userId;
     private String firstName;
@@ -13,7 +15,9 @@ public class AuthUserResponse {
     public AuthUserResponse() {
     }
 
-    public AuthUserResponse(String sessionId, Long userId, String firstName, String lastName, String email, Long roleId, String roleName) {
+    public AuthUserResponse(String accessToken, String refreshToken, String sessionId, Long userId, String firstName, String lastName, String email, Long roleId, String roleName) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
         this.sessionId = sessionId;
         this.userId = userId;
         this.firstName = firstName;
@@ -21,6 +25,22 @@ public class AuthUserResponse {
         this.email = email;
         this.roleId = roleId;
         this.roleName = roleName;
+    }
+
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
     public String getSessionId() {

@@ -12,13 +12,14 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI openAPI() {
-        String schemeName = "X-Session-Id";
+        String schemeName = "bearerAuth";
         return new OpenAPI()
                 .info(new Info().title("NBP API").version("1.0"))
                 .addSecurityItem(new SecurityRequirement().addList(schemeName))
                 .schemaRequirement(schemeName, new SecurityScheme()
-                        .type(SecurityScheme.Type.APIKEY)
-                        .in(SecurityScheme.In.HEADER)
-                        .name(schemeName));
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
+                        .description("Access token from /auth/login or /auth/refresh"));
     }
 }

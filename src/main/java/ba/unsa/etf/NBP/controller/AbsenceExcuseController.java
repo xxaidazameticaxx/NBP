@@ -25,39 +25,23 @@ public class AbsenceExcuseController {
     }
 
     @PostMapping
-    public ResponseEntity<AbsenceExcuse> submitExcuse(
-            @RequestBody SubmitExcuseRequest request,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
-
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
-
+    public ResponseEntity<AbsenceExcuse> submitExcuse(@RequestBody SubmitExcuseRequest request) {
+        User currentUser = getAuthenticatedUser();
         AbsenceExcuse excuse = absenceExcuseService.submitExcuse(
                 request.courseSessionId(), request.reason(), currentUser);
-
         return ResponseEntity.status(HttpStatus.CREATED).body(excuse);
     }
 
     @PutMapping("/{id}/approve")
-    public ResponseEntity<Void> approveExcuse(
-            @PathVariable Long id,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
-
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
-
+    public ResponseEntity<Void> approveExcuse(@PathVariable Long id) {
+        User currentUser = getAuthenticatedUser();
         absenceExcuseService.approveExcuse(id, currentUser);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}/reject")
-    public ResponseEntity<Void> rejectExcuse(
-            @PathVariable Long id,
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
-
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
-
+    public ResponseEntity<Void> rejectExcuse(@PathVariable Long id) {
+        User currentUser = getAuthenticatedUser();
         absenceExcuseService.rejectExcuse(id, currentUser);
         return ResponseEntity.ok().build();
     }
@@ -73,12 +57,13 @@ public class AbsenceExcuseController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<AbsenceExcuse>> findPending(
-            @RequestHeader(name = AuthService.SESSION_HEADER, required = false) String sessionId) {
-
-        User currentUser = authService.authenticateSession(sessionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired session"));
-
+    public ResponseEntity<List<AbsenceExcuse>> findPending() {
+        User currentUser = getAuthenticatedUser();
         return ResponseEntity.ok(absenceExcuseService.findPendingByProfessor(currentUser));
+    }
+
+    private User getAuthenticatedUser() {
+        return authService.getAuthenticatedUserFromContext()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
     }
 }
