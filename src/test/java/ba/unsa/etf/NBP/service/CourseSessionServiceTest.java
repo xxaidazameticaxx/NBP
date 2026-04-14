@@ -29,6 +29,7 @@ class CourseSessionServiceTest {
     @Mock private ProfessorRepository professorRepository;
     @Mock private TimetableRepository timetableRepository;
     @Mock private RoomRepository roomRepository;
+    @Mock private AttendanceService attendanceService;
 
     private CourseSessionService service;
 
@@ -43,7 +44,7 @@ class CourseSessionServiceTest {
     @BeforeEach
     void setUp() {
         service = new CourseSessionService(courseSessionRepository, courseRepository,
-                professorRepository, timetableRepository, roomRepository);
+                professorRepository, timetableRepository, roomRepository, attendanceService);
 
         professorUser = new User(1L, "prof1", "pass", "John", "Doe", "john@etf.ba", null, null, new Role(2L, "Professor"));
         otherProfessorUser = new User(2L, "prof2", "pass", "Jane", "Smith", "jane@etf.ba", null, null, new Role(2L, "Professor"));
@@ -156,6 +157,7 @@ class CourseSessionServiceTest {
 
         assertNotNull(response.getSessionEndTime());
         verify(courseSessionRepository).update(any(CourseSession.class));
+        verify(attendanceService).autoMarkAbsentForSession(any(CourseSession.class));
     }
 
     @Test
@@ -171,6 +173,7 @@ class CourseSessionServiceTest {
                 () -> service.closeSession(1L, professorUser));
 
         assertEquals(400, ex.getStatusCode().value());
+        verify(attendanceService, never()).autoMarkAbsentForSession(any(CourseSession.class));
     }
 
     @Test
@@ -186,6 +189,7 @@ class CourseSessionServiceTest {
                 () -> service.closeSession(1L, otherProfessorUser));
 
         assertEquals(403, ex.getStatusCode().value());
+        verify(attendanceService, never()).autoMarkAbsentForSession(any(CourseSession.class));
     }
 
     @Test
