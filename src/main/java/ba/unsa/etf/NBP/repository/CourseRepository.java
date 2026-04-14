@@ -42,10 +42,9 @@ public class CourseRepository {
     }
 
     public void save(Course course) {
-        String sql = "INSERT INTO NBP_COURSE (ID, NAME, CODE, PROFESSOR_ID, DEPARTMENT_ID, ACADEMIC_YEAR, SEMESTER, CREDITS) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO NBP_COURSE (NAME, CODE, PROFESSOR_ID, DEPARTMENT_ID, ACADEMIC_YEAR, SEMESTER, CREDITS) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
         jdbcTemplate.update(sql,
-                course.getId(),
                 course.getName(),
                 course.getCode(),
                 course.getProfessorId(),

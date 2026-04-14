@@ -47,10 +47,9 @@ public class CourseSessionRepository {
     }
 
     public void save(CourseSession courseSession) {
-        String sql = "INSERT INTO NBP_COURSE_SESSION (ID, COURSE_ID, SESSION_START_TIME, SESSION_END_TIME, SESSION_CODE, ROOM_ID, TIMETABLE_ID, SESSION_TYPE) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO NBP_COURSE_SESSION (COURSE_ID, SESSION_START_TIME, SESSION_END_TIME, SESSION_CODE, ROOM_ID, TIMETABLE_ID, SESSION_TYPE) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
         jdbcTemplate.update(sql,
-                courseSession.getId(),
                 courseSession.getCourseId(),
                 courseSession.getSessionStartTime() != null ? java.sql.Timestamp.valueOf(courseSession.getSessionStartTime()) : null,
                 courseSession.getSessionEndTime() != null ? java.sql.Timestamp.valueOf(courseSession.getSessionEndTime()) : null,

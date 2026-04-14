@@ -39,9 +39,8 @@ public class EnrollmentRepository {
     }
 
     public void save(Enrollment enrollment) {
-        String sql = "INSERT INTO NBP_ENROLLMENT (ID, STUDENT_ID, COURSE_ID, ENROLLMENT_DATE) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO NBP_ENROLLMENT (STUDENT_ID, COURSE_ID, ENROLLMENT_DATE) VALUES (?, ?, ?)";
         jdbcTemplate.update(sql,
-                enrollment.getId(),
                 enrollment.getStudentId(),
                 enrollment.getCourseId(),
                 enrollment.getEnrollmentDate() != null ? java.sql.Date.valueOf(enrollment.getEnrollmentDate()) : null);

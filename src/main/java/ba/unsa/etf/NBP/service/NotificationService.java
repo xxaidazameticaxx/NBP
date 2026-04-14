@@ -42,4 +42,8 @@ public class NotificationService {
     public List<Notification> findUnreadByUserId(Long userId) {
         return notificationRepository.findUnreadByUserId(userId);
     }
+
+    public void markAsRead(Long id) {
+        notificationRepository.markAsRead(id);
+    }
 }
