@@ -42,10 +42,9 @@ public class NotificationRepository {
     }
 
     public void save(Notification notification) {
-        String sql = "INSERT INTO NBP_NOTIFICATION (ID, USER_ID, TITLE, MESSAGE, IS_READ, CREATED_AT, NOTIFICATION_TYPE, COURSE_SESSION_ID) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO NBP_NOTIFICATION (USER_ID, TITLE, MESSAGE, IS_READ, CREATED_AT, NOTIFICATION_TYPE, COURSE_SESSION_ID) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
         jdbcTemplate.update(sql,
-                notification.getId(),
                 notification.getUserId(),
                 notification.getTitle(),
                 notification.getMessage(),
