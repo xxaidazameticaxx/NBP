@@ -63,15 +63,19 @@ public class AbsenceExcuseService {
         Student student = studentRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a student"));
 
-        Attendance attendance = attendanceRepository
-                .findByStudentIdAndCourseSessionId(student.getId(), courseSessionId)
+        // Verify the session actually exists
+        courseSessionRepository.findById(courseSessionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "No attendance record found for this session"));
+                        "Course session not found"));
 
-        if (attendance.isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Student was present in this session — no excuse needed");
-        }
+        // Block only if explicitly marked present — no record means absent
+        attendanceRepository.findByStudentIdAndCourseSessionId(student.getId(), courseSessionId)
+                .ifPresent(attendance -> {
+                    if (attendance.isPresent()) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "Student was present in this session — no excuse needed");
+                    }
+                });
 
         if (absenceExcuseRepository.findByStudentIdAndCourseSessionId(student.getId(), courseSessionId).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
