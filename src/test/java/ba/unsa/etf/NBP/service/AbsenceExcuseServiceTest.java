@@ -67,7 +67,7 @@ class AbsenceExcuseServiceTest {
                 LocalDateTime.of(2026, 3, 10, 10, 0),
                 "123456", 50L, null, null);
 
-        pendingExcuse = new AbsenceExcuse(99L, 1L, 200L, "I was sick", LocalDateTime.now(), "PENDING", null);
+        pendingExcuse = new AbsenceExcuse(99L, 1L, 200L, "I was sick", LocalDateTime.now(), "PENDING", null, null, null);
     }
 
     // ── Scenario 1: Submit excuse when absent ─────────────────────────────────
@@ -77,11 +77,12 @@ class AbsenceExcuseServiceTest {
         Attendance absentRecord = new Attendance(1L, 1L, 200L, false, LocalDateTime.now(), null);
 
         when(studentRepository.findByUserId(10L)).thenReturn(Optional.of(student));
+        when(courseSessionRepository.findById(200L)).thenReturn(Optional.of(session));
         when(attendanceRepository.findByStudentIdAndCourseSessionId(1L, 200L)).thenReturn(Optional.of(absentRecord));
         when(absenceExcuseRepository.findByStudentIdAndCourseSessionId(1L, 200L)).thenReturn(Optional.empty());
         when(absenceExcuseRepository.saveAndReturnId(any())).thenReturn(99L);
 
-        AbsenceExcuse result = service.submitExcuse(200L, "I was sick", studentUser);
+        AbsenceExcuse result = service.submitExcuse(200L, "I was sick", null, null, studentUser);
 
         assertEquals(99L, result.getId());
         assertEquals("PENDING", result.getStatus());
@@ -98,10 +99,11 @@ class AbsenceExcuseServiceTest {
         Attendance presentRecord = new Attendance(1L, 1L, 200L, true, LocalDateTime.now(), null);
 
         when(studentRepository.findByUserId(10L)).thenReturn(Optional.of(student));
+        when(courseSessionRepository.findById(200L)).thenReturn(Optional.of(session));
         when(attendanceRepository.findByStudentIdAndCourseSessionId(1L, 200L)).thenReturn(Optional.of(presentRecord));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> service.submitExcuse(200L, "reason", studentUser));
+                () -> service.submitExcuse(200L, "reason", null, null, studentUser));
 
         assertEquals(400, ex.getStatusCode().value());
         verify(absenceExcuseRepository, never()).saveAndReturnId(any());
@@ -114,11 +116,12 @@ class AbsenceExcuseServiceTest {
         Attendance absentRecord = new Attendance(1L, 1L, 200L, false, LocalDateTime.now(), null);
 
         when(studentRepository.findByUserId(10L)).thenReturn(Optional.of(student));
+        when(courseSessionRepository.findById(200L)).thenReturn(Optional.of(session));
         when(attendanceRepository.findByStudentIdAndCourseSessionId(1L, 200L)).thenReturn(Optional.of(absentRecord));
         when(absenceExcuseRepository.findByStudentIdAndCourseSessionId(1L, 200L)).thenReturn(Optional.of(pendingExcuse));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> service.submitExcuse(200L, "reason", studentUser));
+                () -> service.submitExcuse(200L, "reason", null, null, studentUser));
 
         assertEquals(400, ex.getStatusCode().value());
         verify(absenceExcuseRepository, never()).saveAndReturnId(any());
@@ -179,7 +182,7 @@ class AbsenceExcuseServiceTest {
     @Test
     void approveExcuse_whenAlreadyReviewed_throwsBadRequest() {
         AbsenceExcuse alreadyApproved = new AbsenceExcuse(99L, 1L, 200L, "sick",
-                LocalDateTime.now(), "APPROVED", 20L);
+                LocalDateTime.now(), "APPROVED", 20L, null, null);
 
         when(professorRepository.findByUserId(20L)).thenReturn(Optional.of(professor));
         when(absenceExcuseRepository.findById(99L)).thenReturn(Optional.of(alreadyApproved));
@@ -215,9 +218,9 @@ class AbsenceExcuseServiceTest {
     @Test
     void findByStudentId_returnsAllExcusesWithStatuses() {
         List<AbsenceExcuse> excuses = List.of(
-                new AbsenceExcuse(1L, 1L, 200L, "sick",     LocalDateTime.now(), "PENDING",  null),
-                new AbsenceExcuse(2L, 1L, 201L, "emergency",LocalDateTime.now(), "APPROVED", 20L),
-                new AbsenceExcuse(3L, 1L, 202L, "late bus",  LocalDateTime.now(), "REJECTED", 20L)
+                new AbsenceExcuse(1L, 1L, 200L, "sick",     LocalDateTime.now(), "PENDING",  null, null, null),
+                new AbsenceExcuse(2L, 1L, 201L, "emergency",LocalDateTime.now(), "APPROVED", 20L,  null, null),
+                new AbsenceExcuse(3L, 1L, 202L, "late bus",  LocalDateTime.now(), "REJECTED", 20L, null, null)
         );
 
         when(absenceExcuseRepository.findByStudentId(1L)).thenReturn(excuses);
@@ -235,8 +238,8 @@ class AbsenceExcuseServiceTest {
     @Test
     void findPendingByProfessor_returnsOnlyPendingFromOwnCourses() {
         List<AbsenceExcuse> pending = List.of(
-                new AbsenceExcuse(1L, 1L, 200L, "sick", LocalDateTime.now(), "PENDING", null),
-                new AbsenceExcuse(2L, 2L, 201L, "travel",LocalDateTime.now(), "PENDING", null)
+                new AbsenceExcuse(1L, 1L, 200L, "sick",   LocalDateTime.now(), "PENDING", null, null, null),
+                new AbsenceExcuse(2L, 2L, 201L, "travel", LocalDateTime.now(), "PENDING", null, null, null)
         );
 
         when(professorRepository.findByUserId(20L)).thenReturn(Optional.of(professor));
@@ -253,8 +256,8 @@ class AbsenceExcuseServiceTest {
     @Test
     void findByCourseSessionId_returnsAllExcusesTiedToSession() {
         List<AbsenceExcuse> excuses = List.of(
-                new AbsenceExcuse(1L, 1L, 200L, "sick",    LocalDateTime.now(), "PENDING",  null),
-                new AbsenceExcuse(2L, 2L, 200L, "family",  LocalDateTime.now(), "APPROVED", 20L)
+                new AbsenceExcuse(1L, 1L, 200L, "sick",   LocalDateTime.now(), "PENDING",  null, null, null),
+                new AbsenceExcuse(2L, 2L, 200L, "family", LocalDateTime.now(), "APPROVED", 20L,  null, null)
         );
 
         when(absenceExcuseRepository.findByCourseSessionId(200L)).thenReturn(excuses);
@@ -265,7 +268,3 @@ class AbsenceExcuseServiceTest {
         assertTrue(result.stream().allMatch(e -> e.getCourseSessionId().equals(200L)));
     }
 }
-
-
-
-

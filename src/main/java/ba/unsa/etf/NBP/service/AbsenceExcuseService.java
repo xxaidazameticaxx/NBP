@@ -59,7 +59,7 @@ public class AbsenceExcuseService {
 
     // --- Workflow methods ---
 
-    public AbsenceExcuse submitExcuse(Long courseSessionId, String reason, User currentUser) {
+    public AbsenceExcuse submitExcuse(Long courseSessionId, String reason, byte[] document, String documentName, User currentUser) {
         Student student = studentRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a student"));
 
@@ -89,6 +89,8 @@ public class AbsenceExcuseService {
         excuse.setSubmittedAt(LocalDateTime.now());
         excuse.setStatus("PENDING");
         excuse.setReviewedBy(null);
+        excuse.setDocument(document);
+        excuse.setDocumentName(documentName);
 
         Long generatedId = absenceExcuseRepository.saveAndReturnId(excuse);
         excuse.setId(generatedId);

@@ -1,15 +1,18 @@
 package ba.unsa.etf.NBP.controller;
 
-import ba.unsa.etf.NBP.dto.excuse.SubmitExcuseRequest;
 import ba.unsa.etf.NBP.model.AbsenceExcuse;
 import ba.unsa.etf.NBP.model.User;
 import ba.unsa.etf.NBP.service.AbsenceExcuseService;
 import ba.unsa.etf.NBP.service.AuthService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -24,12 +27,50 @@ public class AbsenceExcuseController {
         this.authService = authService;
     }
 
-    @PostMapping
-    public ResponseEntity<AbsenceExcuse> submitExcuse(@RequestBody SubmitExcuseRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AbsenceExcuse> submitExcuse(
+            @RequestParam("courseSessionId") Long courseSessionId,
+            @RequestParam("reason") String reason,
+            @RequestPart("document") MultipartFile document) throws IOException {
+
+        if (document.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "PDF document is required");
+        }
+        String contentType = document.getContentType();
+        if (contentType == null || !contentType.equalsIgnoreCase(MediaType.APPLICATION_PDF_VALUE)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF files are accepted");
+        }
+
         User currentUser = getAuthenticatedUser();
         AbsenceExcuse excuse = absenceExcuseService.submitExcuse(
-                request.courseSessionId(), request.reason(), currentUser);
+                courseSessionId, reason,
+                document.getBytes(), document.getOriginalFilename(),
+                currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(excuse);
+    }
+
+    @GetMapping("/{id}/document")
+    public ResponseEntity<byte[]> downloadDocument(@PathVariable Long id) {
+        AbsenceExcuse excuse = absenceExcuseService.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excuse not found"));
+
+        byte[] document = excuse.getDocument();
+        if (document == null || document.length == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No document attached to this excuse");
+        }
+
+        String filename = excuse.getDocumentName() != null ? excuse.getDocumentName() : "document.pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(document);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AbsenceExcuse> findById(@PathVariable Long id) {
+        AbsenceExcuse excuse = absenceExcuseService.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Excuse not found"));
+        return ResponseEntity.ok(excuse);
     }
 
     @PutMapping("/{id}/approve")

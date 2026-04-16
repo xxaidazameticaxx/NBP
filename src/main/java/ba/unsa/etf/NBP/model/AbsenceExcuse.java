@@ -1,5 +1,6 @@
 package ba.unsa.etf.NBP.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 public class AbsenceExcuse {
@@ -11,11 +12,15 @@ public class AbsenceExcuse {
     private LocalDateTime submittedAt;
     private String status;
     private Long reviewedBy;
+    @JsonIgnore
+    private byte[] document;
+    private String documentName;
 
     public AbsenceExcuse() {}
 
     public AbsenceExcuse(Long id, Long studentId, Long courseSessionId, String reason,
-                         LocalDateTime submittedAt, String status, Long reviewedBy) {
+                         LocalDateTime submittedAt, String status, Long reviewedBy,
+                         byte[] document, String documentName) {
         this.id = id;
         this.studentId = studentId;
         this.courseSessionId = courseSessionId;
@@ -23,6 +28,8 @@ public class AbsenceExcuse {
         this.submittedAt = submittedAt;
         this.status = status;
         this.reviewedBy = reviewedBy;
+        this.document = document;
+        this.documentName = documentName;
     }
 
     public Long getId() { return id; }
@@ -45,4 +52,10 @@ public class AbsenceExcuse {
 
     public Long getReviewedBy() { return reviewedBy; }
     public void setReviewedBy(Long reviewedBy) { this.reviewedBy = reviewedBy; }
+
+    public byte[] getDocument() { return document; }
+    public void setDocument(byte[] document) { this.document = document; }
+
+    public String getDocumentName() { return documentName; }
+    public void setDocumentName(String documentName) { this.documentName = documentName; }
 }
