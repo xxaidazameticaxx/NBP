@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link StudyProgram} rows in {@code NBP_STUDY_PROGRAM}.
+ * <p>
+ * Manages degree programs with department associations, tracking program details
+ * and degree type classifications.
+ */
 @Repository
 public class StudyProgramRepository {
 

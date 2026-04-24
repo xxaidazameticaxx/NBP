@@ -14,6 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Enrollment endpoints under {@code /enrollments}.
+ * <p>
+ * Creating and deleting enrollments is admin-only; lookups by student or course
+ * are available to any authenticated user.
+ */
 @RestController
 @RequestMapping("/enrollments")
 public class EnrollmentController {
@@ -33,11 +39,22 @@ public class EnrollmentController {
         this.authService = authService;
     }
 
+    /**
+     * Lists every enrollment.
+     *
+     * @return all enrollments
+     */
     @GetMapping
     public List<Enrollment> findAll() {
         return enrollmentService.findAll();
     }
 
+    /**
+     * Returns a single enrollment by ID.
+     *
+     * @param id enrollment ID
+     * @return the enrollment, or {@code 404 Not Found}
+     */
     @GetMapping("/{id}")
     public ResponseEntity<Enrollment> findById(@PathVariable Long id) {
         return enrollmentService.findById(id)
@@ -45,6 +62,14 @@ public class EnrollmentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Enrolls a student in a course. Admin only.
+     *
+     * @param enrollment payload with student and course IDs
+     * @return {@code 201 Created}
+     * @throws ResponseStatusException 403 if caller is not admin, 404 if student or
+     *         course is missing, 400 if already enrolled
+     */
     @PostMapping
     public ResponseEntity<Void> save(@RequestBody Enrollment enrollment) {
 
@@ -73,6 +98,13 @@ public class EnrollmentController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    /**
+     * Updates an existing enrollment.
+     *
+     * @param id         enrollment ID
+     * @param enrollment updated fields
+     * @return {@code 200 OK}
+     */
     @PutMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody Enrollment enrollment) {
         enrollment.setId(id);
@@ -80,6 +112,13 @@ public class EnrollmentController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Removes an enrollment. Admin only.
+     *
+     * @param id enrollment ID
+     * @return {@code 204 No Content}
+     * @throws ResponseStatusException 403 if caller is not admin
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {
 
@@ -95,12 +134,24 @@ public class EnrollmentController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Lists every enrollment for a given student.
+     *
+     * @param studentId student ID
+     * @return enrollments for that student
+     */
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<Enrollment>> findByStudentId(@PathVariable Long studentId) {
         List<Enrollment> enrollments = enrollmentService.findByStudentId(studentId);
         return ResponseEntity.ok(enrollments);
     }
 
+    /**
+     * Lists every enrollment for a given course.
+     *
+     * @param courseId course ID
+     * @return enrollments in that course
+     */
     @GetMapping("/course/{courseId}")
     public ResponseEntity<List<Enrollment>> findByCourseId(@PathVariable Long courseId) {
         List<Enrollment> enrollments = enrollmentService.findByCourseId(courseId);

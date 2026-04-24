@@ -8,6 +8,11 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Department} rows in {@code NBP_DEPARTMENT}.
+ * <p>
+ * Manages academic departments, providing CRUD operations for department metadata.
+ */
 @Repository
 public class DepartmentRepository {
 

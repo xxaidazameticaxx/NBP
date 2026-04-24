@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Room} rows in {@code NBP_ROOM}.
+ * <p>
+ * Manages classroom and facility records with building associations
+ * for course session scheduling and attendance location tracking.
+ */
 @Repository
 public class RoomRepository {
 

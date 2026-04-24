@@ -10,6 +10,12 @@ import java.sql.Date;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link User} rows in {@code NBP_USER}.
+ * <p>
+ * Manages user accounts with role associations, providing lookups by username
+ * and email for authentication and authorization.
+ */
 @Repository
 public class UserRepository {
 

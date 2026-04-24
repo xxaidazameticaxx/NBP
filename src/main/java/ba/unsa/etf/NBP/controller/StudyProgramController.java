@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * CRUD endpoints for study programs under {@code /study-programs}.
+ */
 @RestController
 @RequestMapping("/study-programs")
 public class StudyProgramController {
@@ -18,11 +21,22 @@ public class StudyProgramController {
         this.studyProgramService = studyProgramService;
     }
 
+    /**
+     * Lists every study program.
+     *
+     * @return all study programs
+     */
     @GetMapping
     public List<StudyProgram> findAll() {
         return studyProgramService.findAll();
     }
 
+    /**
+     * Returns a single study program by ID.
+     *
+     * @param id study program ID
+     * @return the study program, or {@code 404 Not Found}
+     */
     @GetMapping("/{id}")
     public ResponseEntity<StudyProgram> findById(@PathVariable Long id) {
         return studyProgramService.findById(id)
@@ -30,12 +44,25 @@ public class StudyProgramController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Creates a new study program.
+     *
+     * @param studyProgram study program payload
+     * @return {@code 201 Created}
+     */
     @PostMapping
     public ResponseEntity<Void> save(@RequestBody StudyProgram studyProgram) {
         studyProgramService.save(studyProgram);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    /**
+     * Updates an existing study program.
+     *
+     * @param id           study program ID
+     * @param studyProgram updated fields
+     * @return {@code 200 OK}
+     */
     @PutMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody StudyProgram studyProgram) {
         studyProgram.setId(id);
@@ -43,6 +70,12 @@ public class StudyProgramController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Deletes a study program.
+     *
+     * @param id study program ID
+     * @return {@code 204 No Content}
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {
         studyProgramService.deleteById(id);

@@ -16,6 +16,12 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Global exception handler for REST endpoints.
+ * <p>
+ * Intercepts all exceptions and formats them into consistent error responses
+ * with status code, timestamp, and descriptive messages.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

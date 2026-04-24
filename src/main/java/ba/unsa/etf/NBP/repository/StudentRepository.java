@@ -9,6 +9,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Student} rows in {@code NBP_STUDENT}.
+ * <p>
+ * Links student records to users and study programs, providing roster lookups
+ * for course management and authorization checks on attendance access.
+ */
 @Repository
 public class StudentRepository {
 

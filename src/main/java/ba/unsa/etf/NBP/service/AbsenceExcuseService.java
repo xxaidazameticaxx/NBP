@@ -10,6 +10,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Workflow and CRUD for absence excuses.
+ * <p>
+ * Students submit a PDF-backed excuse for a missed session; the owning professor
+ * approves or rejects it. On any status change, the student receives a notification.
+ */
 @Service
 public class AbsenceExcuseService {
 
@@ -37,38 +43,77 @@ public class AbsenceExcuseService {
         this.notificationService = notificationService;
     }
 
+    /**
+     * Returns every excuse in the system.
+     *
+     * @return all excuses
+     */
     public List<AbsenceExcuse> findAll() {
         return absenceExcuseRepository.findAll();
     }
 
+    /**
+     * Looks up an excuse by ID.
+     *
+     * @param id excuse ID
+     * @return the excuse, or {@link Optional#empty()} if missing
+     */
     public Optional<AbsenceExcuse> findById(Long id) {
         return absenceExcuseRepository.findById(id);
     }
 
+    /**
+     * Saves an excuse row directly (low level).
+     *
+     * @param absenceExcuse excuse to save
+     */
     public void save(AbsenceExcuse absenceExcuse) {
         absenceExcuseRepository.save(absenceExcuse);
     }
 
+    /**
+     * Updates an excuse row.
+     *
+     * @param absenceExcuse excuse with updated fields (ID required)
+     */
     public void update(AbsenceExcuse absenceExcuse) {
         absenceExcuseRepository.update(absenceExcuse);
     }
 
+    /**
+     * Deletes an excuse by ID.
+     *
+     * @param id excuse ID
+     */
     public void deleteById(Long id) {
         absenceExcuseRepository.deleteById(id);
     }
 
     // --- Workflow methods ---
 
+    /**
+     * Submits a new absence excuse for a missed session.
+     * <p>
+     * Validates that the student is not already marked present, that no duplicate
+     * excuse exists for the session, and that the session itself exists.
+     *
+     * @param courseSessionId session the student was absent from
+     * @param reason          free-text explanation
+     * @param document        PDF bytes backing the excuse
+     * @param documentName    original file name for the attachment
+     * @param currentUser     the authenticated student
+     * @return the created excuse with an assigned ID
+     * @throws ResponseStatusException 403 if the user is not a student,
+     *         400 if already marked present or excuse already exists
+     */
     public AbsenceExcuse submitExcuse(Long courseSessionId, String reason, byte[] document, String documentName, User currentUser) {
         Student student = studentRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a student"));
 
-        // Verify the session actually exists
         courseSessionRepository.findById(courseSessionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Course session not found"));
 
-        // Block only if explicitly marked present — no record means absent
         attendanceRepository.findByStudentIdAndCourseSessionId(student.getId(), courseSessionId)
                 .ifPresent(attendance -> {
                     if (attendance.isPresent()) {
@@ -97,14 +142,34 @@ public class AbsenceExcuseService {
         return excuse;
     }
 
+    /**
+     * Approves a pending excuse and notifies the student.
+     *
+     * @param excuseId    excuse ID
+     * @param currentUser the authenticated professor
+     */
     public void approveExcuse(Long excuseId, User currentUser) {
         reviewExcuse(excuseId, currentUser, "APPROVED");
     }
 
+    /**
+     * Rejects a pending excuse and notifies the student.
+     *
+     * @param excuseId    excuse ID
+     * @param currentUser the authenticated professor
+     */
     public void rejectExcuse(Long excuseId, User currentUser) {
         reviewExcuse(excuseId, currentUser, "REJECTED");
     }
 
+    /**
+     * Shared logic for approve/reject: verifies ownership, updates status, sends notification.
+     *
+     * @param excuseId    excuse ID
+     * @param currentUser the authenticated professor
+     * @param newStatus   either {@code "APPROVED"} or {@code "REJECTED"}
+     * @throws ResponseStatusException on ownership or state failures
+     */
     private void reviewExcuse(Long excuseId, User currentUser, String newStatus) {
         Professor professor = professorRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a professor"));
@@ -156,14 +221,33 @@ public class AbsenceExcuseService {
         notificationService.save(notification);
     }
 
+    /**
+     * Lists every excuse submitted by a student.
+     *
+     * @param studentId student ID
+     * @return excuses for that student
+     */
     public List<AbsenceExcuse> findByStudentId(Long studentId) {
         return absenceExcuseRepository.findByStudentId(studentId);
     }
 
+    /**
+     * Lists every excuse filed against a course session.
+     *
+     * @param courseSessionId session ID
+     * @return excuses for that session
+     */
     public List<AbsenceExcuse> findByCourseSessionId(Long courseSessionId) {
         return absenceExcuseRepository.findByCourseSessionId(courseSessionId);
     }
 
+    /**
+     * Returns pending excuses whose session's course is owned by the calling professor.
+     *
+     * @param currentUser the authenticated professor
+     * @return pending excuses the caller can review
+     * @throws ResponseStatusException 403 if the user is not a professor
+     */
     public List<AbsenceExcuse> findPendingByProfessor(User currentUser) {
         Professor professor = professorRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a professor"));

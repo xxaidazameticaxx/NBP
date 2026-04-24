@@ -20,11 +20,22 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Authentication, session management, and admin-driven user creation.
+ * <p>
+ * Sessions are tracked in {@code NBP_USER_SESSION} and paired with a JWT access
+ * token (carrying the session ID as a claim) plus a refresh token. Clients send
+ * the access token via the {@code Authorization: Bearer <token>} header.
+ */
 @Service
 public class AuthService {
 
+    /** HTTP header used to carry the bearer access token. */
     public static final String AUTHORIZATION_HEADER = "Authorization";
+
+    /** Prefix for bearer token values in the {@link #AUTHORIZATION_HEADER}. */
     public static final String BEARER_PREFIX = "Bearer ";
+
     private static final Long STUDENT_ROLE_ID = 1L;
     private static final Long PROFESSOR_ROLE_ID = 2L;
     private static final Long ADMIN_ROLE_ID = 3L;
@@ -44,6 +55,16 @@ public class AuthService {
         this.jwtTokenService = jwtTokenService;
     }
 
+    /**
+     * Validates credentials and issues a fresh session plus access and refresh tokens.
+     * <p>
+     * Any previous sessions for the user are deleted so each user holds at most
+     * one active session at a time.
+     *
+     * @param request the login request
+     * @return the user profile with new tokens, or {@link Optional#empty()} if the
+     *         credentials are invalid
+     */
     public Optional<AuthUserResponse> login(LoginRequest request) {
         Optional<User> foundUser = userRepository.findByUsername(request.getUsername());
         if (foundUser.isEmpty()) {
@@ -70,6 +91,14 @@ public class AuthService {
         return Optional.of(toAuthUserResponse(user, newSessionId, true));
     }
 
+    /**
+     * Exchanges a valid refresh token for a new pair of access and refresh tokens
+     * and rotates the underlying session ID.
+     *
+     * @param refreshToken the refresh token (raw or with {@code Bearer } prefix)
+     * @return new tokens and user info, or {@link Optional#empty()} if the token is
+     *         invalid, not a refresh token, or references an unknown user/session
+     */
     public Optional<AuthUserResponse> refresh(String refreshToken) {
         Optional<String> rawToken = extractToken(refreshToken);
         if (rawToken.isEmpty()) {
@@ -113,6 +142,15 @@ public class AuthService {
         return Optional.of(toAuthUserResponse(user, newSessionId, true));
     }
 
+    /**
+     * Creates a new user with a bcrypt-hashed password.
+     * <p>
+     * Rejects the request if any field is missing, the role is not one of
+     * STUDENT/PROFESSOR/ADMIN, or the username is already taken.
+     *
+     * @param request the new user's details
+     * @return the created user, or {@link Optional#empty()} on validation failure
+     */
     public Optional<CreatedUserResponse> createUserByAdmin(CreateUserRequest request) {
         if (request == null
                 || isBlank(request.getUsername())
@@ -148,11 +186,26 @@ public class AuthService {
         return userRepository.createUser(user).map(this::toCreatedUserResponse);
     }
 
+    /**
+     * Revokes the session referenced by the given access token.
+     *
+     * @param authorizationHeader raw token or {@code Bearer} header value
+     */
     public void logout(String authorizationHeader) {
         Optional<String> sessionId = extractSessionIdFromToken(authorizationHeader);
         sessionId.ifPresent(userSessionRepository::deleteBySessionId);
     }
 
+    /**
+     * Returns the currently authenticated user, derived from an access token.
+     * <p>
+     * Verifies the token, extracts the session ID, and checks the stored session
+     * is still active.
+     *
+     * @param authorizationHeader raw token or {@code Bearer} header value
+     * @return the user profile, or {@link Optional#empty()} if the token or
+     *         session is invalid or expired
+     */
     public Optional<AuthUserResponse> getCurrentUserByToken(String authorizationHeader) {
         Optional<String> sessionId = extractSessionIdFromToken(authorizationHeader);
         if (sessionId.isEmpty()) {
@@ -168,6 +221,14 @@ public class AuthService {
         return userRepository.findById(userId).map(user -> toAuthUserResponse(user, sessionId.get(), false));
     }
 
+    /**
+     * Resolves an access token to the backing {@link User} entity.
+     * <p>
+     * Used by the security filter to populate the Spring Security context.
+     *
+     * @param authorizationHeader raw token or {@code Bearer} header value
+     * @return the user, or {@link Optional#empty()} if the token or session is invalid
+     */
     public Optional<User> authenticateSession(String authorizationHeader) {
         Optional<String> sessionId = extractSessionIdFromToken(authorizationHeader);
         if (sessionId.isEmpty()) {
@@ -182,6 +243,13 @@ public class AuthService {
         return userRepository.findById(activeSession.get().getUserId());
     }
 
+    /**
+     * Reads the {@link User} previously stored as the principal on the current
+     * Spring Security {@link Authentication}. Controllers call this after the
+     * security filter has authenticated the request.
+     *
+     * @return the authenticated user, or {@link Optional#empty()} if none
+     */
     public Optional<User> getAuthenticatedUserFromContext() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -196,6 +264,14 @@ public class AuthService {
         return Optional.empty();
     }
 
+    /**
+     * Extracts the session ID claim from an access token.
+     * <p>
+     * Refresh tokens are rejected here; use {@link #refresh(String)} for those.
+     *
+     * @param tokenOrHeaderValue raw token or {@code Bearer} header value
+     * @return the session ID, or {@link Optional#empty()} on any validation failure
+     */
     private Optional<String> extractSessionIdFromToken(String tokenOrHeaderValue) {
         Optional<String> rawToken = extractToken(tokenOrHeaderValue);
         if (rawToken.isEmpty()) {
@@ -219,6 +295,12 @@ public class AuthService {
         return Optional.of(sessionId);
     }
 
+    /**
+     * Strips a {@code Bearer } prefix if present and returns the raw JWT.
+     *
+     * @param tokenOrHeaderValue input value
+     * @return the raw token string, or {@link Optional#empty()} if blank
+     */
     private Optional<String> extractToken(String tokenOrHeaderValue) {
         if (tokenOrHeaderValue == null || tokenOrHeaderValue.isBlank()) {
             return Optional.empty();
@@ -233,6 +315,15 @@ public class AuthService {
         return Optional.of(value);
     }
 
+    /**
+     * Builds the {@link AuthUserResponse} DTO, minting a fresh access token and,
+     * optionally, a refresh token.
+     *
+     * @param user                 authenticated user
+     * @param sessionId            the session ID to embed in the access token
+     * @param includeRefreshToken  whether to also mint a refresh token
+     * @return a response DTO with tokens and profile fields
+     */
     private AuthUserResponse toAuthUserResponse(User user, String sessionId, boolean includeRefreshToken) {
         Role role = user.getRole();
         Long roleId = role != null ? role.getId() : null;
@@ -253,6 +344,13 @@ public class AuthService {
         );
     }
 
+    /**
+     * Maps a persisted {@link User} to the {@link CreatedUserResponse} returned
+     * by the admin user-creation endpoint.
+     *
+     * @param user the created user
+     * @return the response DTO
+     */
     private CreatedUserResponse toCreatedUserResponse(User user) {
         Role role = user.getRole();
         return new CreatedUserResponse(
@@ -268,13 +366,23 @@ public class AuthService {
         );
     }
 
+    /**
+     * Checks whether a role ID corresponds to one of STUDENT, PROFESSOR, or ADMIN.
+     *
+     * @param roleId the role ID
+     * @return {@code true} if supported, {@code false} otherwise
+     */
     private boolean isSupportedRoleId(Long roleId) {
         return STUDENT_ROLE_ID.equals(roleId) || PROFESSOR_ROLE_ID.equals(roleId) || ADMIN_ROLE_ID.equals(roleId);
     }
 
+    /**
+     * Null-safe {@code String.isBlank()} check.
+     *
+     * @param value the string to test
+     * @return {@code true} if null or blank
+     */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
 }
-
-

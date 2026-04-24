@@ -18,6 +18,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+/**
+ * Course endpoints under {@code /courses}: CRUD, lookups by professor or department,
+ * attendance-session history, and class roster.
+ */
 @RestController
 @RequestMapping("/courses")
 public class CourseController {
@@ -29,12 +33,12 @@ public class CourseController {
     private final ProfessorService professorService;
     private final StudentService studentService;
 
-    public CourseController(CourseService courseService, 
+    public CourseController(CourseService courseService,
                             CourseSessionService courseSessionService,
                             EnrollmentService enrollmentService,
                             ProfessorService professorService,
                             AuthService authService,
-                            StudentService studentService) 
+                            StudentService studentService)
     {
         this.courseService = courseService;
         this.courseSessionService = courseSessionService;
@@ -44,11 +48,22 @@ public class CourseController {
         this.studentService = studentService;
     }
 
+    /**
+     * Lists every course.
+     *
+     * @return all courses
+     */
     @GetMapping
     public List<Course> findAll() {
         return courseService.findAll();
     }
 
+    /**
+     * Returns a single course by ID.
+     *
+     * @param id course ID
+     * @return the course, or {@code 404 Not Found}
+     */
     @GetMapping("/{id}")
     public ResponseEntity<Course> findById(@PathVariable Long id) {
         return courseService.findById(id)
@@ -56,12 +71,25 @@ public class CourseController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Creates a new course.
+     *
+     * @param course course payload
+     * @return {@code 201 Created}
+     */
     @PostMapping
     public ResponseEntity<Void> save(@RequestBody Course course) {
         courseService.save(course);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    /**
+     * Updates an existing course.
+     *
+     * @param id     course ID
+     * @param course updated fields
+     * @return {@code 200 OK}
+     */
     @PutMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody Course course) {
         course.setId(id);
@@ -69,24 +97,48 @@ public class CourseController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Deletes a course.
+     *
+     * @param id course ID
+     * @return {@code 204 No Content}
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {
         courseService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Lists all courses taught by a specific professor.
+     *
+     * @param professorId professor ID
+     * @return courses taught by that professor
+     */
     @GetMapping("/professor/{professorId}")
     public ResponseEntity<List<Course>> findByProfessorId(@PathVariable Long professorId) {
         List<Course> courses = courseService.findByProfessorId(professorId);
         return ResponseEntity.ok(courses);
     }
 
+    /**
+     * Lists all courses offered by a specific department.
+     *
+     * @param departmentId department ID
+     * @return courses in that department
+     */
     @GetMapping("/department/{departmentId}")
     public ResponseEntity<List<Course>> findByDepartmentId(@PathVariable Long departmentId) {
         List<Course> courses = courseService.findByDepartmentId(departmentId);
         return ResponseEntity.ok(courses);
     }
 
+    /**
+     * Returns the attendance-session history for a course, ordered by start time.
+     *
+     * @param courseId course ID
+     * @return the session history
+     */
     @GetMapping("/{courseId}/sessions")
     public ResponseEntity<List<CourseSessionResponse>> getCourseSessionHistory(@PathVariable Long courseId) {
         User currentUser = authService.getAuthenticatedUserFromContext()
@@ -95,6 +147,14 @@ public class CourseController {
         return ResponseEntity.ok(sessions);
     }
 
+    /**
+     * Returns the roster of students enrolled in a course.
+     * <p>
+     * Accessible to administrators (any course) and professors (only for courses they own).
+     *
+     * @param courseId course ID
+     * @return the enrolled students
+     */
     @GetMapping("/{courseId}/students")
     public ResponseEntity<List<EnrolledStudentDto>> getClassRoster(@PathVariable Long courseId) {
 
@@ -109,7 +169,6 @@ public class CourseController {
         if (!isAdmin) {
             Professor professor = professorService.findByUserId(currentUser.getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Only professors and administrators can view class rosters"));
-            // Verifying if the professor owns the course
             if (!course.getProfessorId().equals(professor.getId())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to view this roster (You do not own this course)");
             }

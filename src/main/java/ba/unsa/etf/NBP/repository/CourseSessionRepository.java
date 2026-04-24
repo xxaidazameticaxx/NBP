@@ -12,6 +12,12 @@ import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link CourseSession} rows in {@code NBP_COURSE_SESSION}.
+ * <p>
+ * Manages open and closed session records, session code generation and lookup,
+ * and room/timetable associations for attendance registration.
+ */
 @Repository
 public class CourseSessionRepository {
 

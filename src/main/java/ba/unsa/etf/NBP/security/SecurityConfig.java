@@ -11,6 +11,12 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 
+/**
+ * HTTP security configuration and filter chain setup.
+ * <p>
+ * Disables CSRF, enables stateless session management, restricts public endpoints
+ * to login/refresh/Swagger endpoints, and injects JWT validation via SessionFilter.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity

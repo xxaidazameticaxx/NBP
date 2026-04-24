@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Notification} rows in {@code NBP_NOTIFICATION}.
+ * <p>
+ * Manages user notifications including read status and type categorization
+ * for filtering by user and read status.
+ */
 @Repository
 public class NotificationRepository {
 

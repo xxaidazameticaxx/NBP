@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Timetable} rows in {@code NBP_TIMETABLE}.
+ * <p>
+ * Manages scheduled class slots with time, room, and validity period tracking,
+ * supporting course session room assignment and schedule management.
+ */
 @Repository
 public class TimetableRepository {
 

@@ -19,6 +19,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+/**
+ * JWT session validation filter.
+ * <p>
+ * Intercepts all authenticated requests, validates the bearer token,
+ * establishes the security context with user and role information.
+ */
 @Component
 public class SessionFilter extends OncePerRequestFilter {
 

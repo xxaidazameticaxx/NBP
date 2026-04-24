@@ -21,6 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 
+/**
+ * Authentication endpoints under {@code /auth}.
+ * <p>
+ * The application uses JWT tokens: login issues a short-lived access token and a
+ * refresh token. Clients send the access token as {@code Authorization: Bearer <token>}
+ * on every protected endpoint.
+ */
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "Authentication")
@@ -32,6 +39,12 @@ public class AuthController {
         this.authService = authService;
     }
 
+    /**
+     * Authenticates a user and issues JWT access and refresh tokens.
+     *
+     * @param request username and password
+     * @return {@code 200 OK} with tokens and profile, or {@code 401 Unauthorized}
+     */
     @PostMapping("/login")
     @Operation(summary = "Login and issue access/refresh JWT tokens", security = {})
     public ResponseEntity<AuthUserResponse> login(@RequestBody LoginRequest request) {
@@ -40,6 +53,12 @@ public class AuthController {
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
+    /**
+     * Revokes the current session by invalidating the access token.
+     *
+     * @param authorizationHeader {@code Authorization} header with the bearer token
+     * @return {@code 204 No Content}, or {@code 401 Unauthorized} if header missing
+     */
     @PostMapping("/logout")
     @Operation(summary = "Logout and revoke active session", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Void> logout(@RequestHeader(value = AuthService.AUTHORIZATION_HEADER, required = false) String authorizationHeader) {
@@ -51,6 +70,12 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Exchanges a valid refresh token for a new pair of access and refresh tokens.
+     *
+     * @param request the refresh token payload
+     * @return {@code 200 OK} with new tokens, or {@code 401 Unauthorized}
+     */
     @PostMapping("/refresh")
     @Operation(summary = "Refresh access token using refresh token", security = {})
     public ResponseEntity<AuthUserResponse> refresh(@RequestBody RefreshTokenRequest request) {
@@ -63,6 +88,12 @@ public class AuthController {
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
+    /**
+     * Returns the profile of the currently authenticated user.
+     *
+     * @param authorizationHeader {@code Authorization} header with the bearer token
+     * @return {@code 200 OK} with user info, or {@code 401 Unauthorized}
+     */
     @GetMapping("/me")
     @Operation(summary = "Get current user profile from access token", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<AuthUserResponse> me(@RequestHeader(value = AuthService.AUTHORIZATION_HEADER, required = false) String authorizationHeader) {
@@ -75,6 +106,13 @@ public class AuthController {
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 
+    /**
+     * Creates a new user account. Admin only.
+     *
+     * @param request new user's details (username, password, role, etc.)
+     * @return {@code 201 Created} on success, or {@code 400 Bad Request} if
+     *         validation fails or the username is taken
+     */
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create user account (admin only)", security = @SecurityRequirement(name = "bearerAuth"))
@@ -84,5 +122,3 @@ public class AuthController {
                 .orElse(ResponseEntity.badRequest().build());
     }
 }
-
-

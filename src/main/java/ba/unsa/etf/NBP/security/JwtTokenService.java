@@ -15,6 +15,12 @@ import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.Optional;
 
+/**
+ * JWT token issuance and validation.
+ * <p>
+ * Creates signed access and refresh tokens with configurable expiration,
+ * parses and validates token claims, and extracts session and user identity.
+ */
 @Service
 public class JwtTokenService {
 

@@ -9,6 +9,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Enrollment} rows in {@code NBP_ENROLLMENT}.
+ * <p>
+ * Tracks student enrollment in courses with date tracking and provides
+ * detailed course information with enrollment context for student views.
+ */
 @Repository
 public class EnrollmentRepository {
 

@@ -14,6 +14,12 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Attendance} rows in {@code NBP_ATTENDANCE}.
+ * <p>
+ * Tracks student presence/absence for each course session, supports override by professors,
+ * and performs batch auto-marking of absent students when a session closes.
+ */
 @Repository
 public class AttendanceRepository {
 

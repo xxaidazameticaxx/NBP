@@ -14,6 +14,12 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+/**
+ * Session management for attendance registration.
+ * <p>
+ * Professors open a session to start accepting student check-ins via 6-digit code,
+ * and close it when the class ends, triggering auto-marking of absent students.
+ */
 @Service
 public class CourseSessionService {
 
@@ -39,26 +45,65 @@ public class CourseSessionService {
         this.attendanceService = attendanceService;
     }
 
+    /**
+     * Returns every course session.
+     *
+     * @return all sessions
+     */
     public List<CourseSession> findAll() {
         return courseSessionRepository.findAll();
     }
 
+    /**
+     * Looks up a course session by ID.
+     *
+     * @param id session ID
+     * @return the session, or {@link Optional#empty()} if missing
+     */
     public Optional<CourseSession> findById(Long id) {
         return courseSessionRepository.findById(id);
     }
 
+    /**
+     * Inserts a new course session (low level).
+     *
+     * @param courseSession session to insert
+     */
     public void save(CourseSession courseSession) {
         courseSessionRepository.save(courseSession);
     }
 
+    /**
+     * Updates a course session.
+     *
+     * @param courseSession session with updated fields (ID required)
+     */
     public void update(CourseSession courseSession) {
         courseSessionRepository.update(courseSession);
     }
 
+    /**
+     * Deletes a course session by ID.
+     *
+     * @param id session ID
+     */
     public void deleteById(Long id) {
         courseSessionRepository.deleteById(id);
     }
 
+    /**
+     * Opens a new attendance session on a course the caller owns.
+     * <p>
+     * Generates a unique 6-digit session code and optionally fills the room from a timetable.
+     *
+     * @param courseId course the session belongs to
+     * @param request optional body specifying {@code timetableId} or {@code roomId}
+     * @param currentUser the authenticated professor
+     * @return the newly opened session with its assigned code
+     * @throws ResponseStatusException 403 if caller is not the course owner,
+     *         400 if already an open session or invalid room/timetable,
+     *         404 if course not found
+     */
     public CourseSessionResponse openSession(Long courseId, OpenSessionRequest request, User currentUser) {
         Professor professor = getProfessorOrThrow(currentUser);
 
@@ -106,6 +151,16 @@ public class CourseSessionService {
         return toResponse(session, room);
     }
 
+    /**
+     * Closes an open attendance session and auto-marks all absent students.
+     *
+     * @param sessionId session ID
+     * @param currentUser the authenticated professor
+     * @return the closed session with updated end time
+     * @throws ResponseStatusException 403 if caller does not own the session,
+     *         400 if session is already closed,
+     *         404 if session or course not found
+     */
     public CourseSessionResponse closeSession(Long sessionId, User currentUser) {
         Professor professor = getProfessorOrThrow(currentUser);
 
@@ -132,7 +187,16 @@ public class CourseSessionService {
         return toResponse(session, room);
     }
 
-public List<CourseSessionResponse> getCourseSessionHistory(Long courseId, User currentUser) {
+/**
+     * Returns the full session history for a course.
+     *
+     * @param courseId course ID
+     * @param currentUser the authenticated professor
+     * @return sessions for the course ordered by start time
+     * @throws ResponseStatusException 403 if caller does not own the course,
+     *         404 if course not found
+     */
+    public List<CourseSessionResponse> getCourseSessionHistory(Long courseId, User currentUser) {
         Professor professor = getProfessorOrThrow(currentUser);
 
         Course course = courseRepository.findById(courseId)
@@ -150,11 +214,23 @@ public List<CourseSessionResponse> getCourseSessionHistory(Long courseId, User c
         }).collect(Collectors.toList());
     }
 
+    /**
+     * Extracts the professor record from the authenticated user.
+     *
+     * @param currentUser the authenticated user
+     * @return the professor record
+     * @throws ResponseStatusException 403 if user is not a professor
+     */
     private Professor getProfessorOrThrow(User currentUser) {
         return professorRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a professor"));
     }
 
+    /**
+     * Generates a unique 6-digit session code, retrying until a collision-free code is found.
+     *
+     * @return a unique session code
+     */
     private String generateUniqueSessionCode() {
         String code;
         do {
@@ -163,6 +239,13 @@ public List<CourseSessionResponse> getCourseSessionHistory(Long courseId, User c
         return code;
     }
 
+    /**
+     * Converts a session and its room to a response DTO.
+     *
+     * @param session the session
+     * @param room the room (may be null)
+     * @return response DTO with room details if available
+     */
     private CourseSessionResponse toResponse(CourseSession session, Room room) {
         CourseSessionResponse response = new CourseSessionResponse();
         response.setId(session.getId());

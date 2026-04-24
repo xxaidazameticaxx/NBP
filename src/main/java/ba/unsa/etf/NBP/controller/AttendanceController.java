@@ -14,6 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+/**
+ * Attendance endpoints under {@code /attendances}.
+ * <p>
+ * Students register their presence by entering the 6-digit session code; professors
+ * can override presence, view session attendance, and browse per-student history.
+ */
 @RestController
 @RequestMapping("/attendances")
 public class AttendanceController {
@@ -26,6 +32,12 @@ public class AttendanceController {
         this.authService = authService;
     }
 
+    /**
+     * Registers the caller as present using the session code the professor shared.
+     *
+     * @param request body with the session code
+     * @return {@code 201 Created} with the attendance record
+     */
     @PostMapping("/register")
     public ResponseEntity<Attendance> registerAttendance(@RequestBody RegisterAttendanceRequest request) {
         User currentUser = getAuthenticatedUser();
@@ -34,6 +46,14 @@ public class AttendanceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    /**
+     * Overrides the presence flag on an attendance record (professor action).
+     *
+     * @param id      attendance record ID
+     * @param request body with the new {@code isPresent} value
+     * @return the updated attendance record
+     * @throws ResponseStatusException 400 if {@code isPresent} is missing
+     */
     @PutMapping("/{id}")
     public ResponseEntity<Attendance> overrideAttendance(
             @PathVariable Long id,
@@ -46,6 +66,12 @@ public class AttendanceController {
         return ResponseEntity.ok(updated);
     }
 
+    /**
+     * Returns attendance records for one session, with student info attached.
+     *
+     * @param sessionId session ID
+     * @return attendance rows with student details
+     */
     @GetMapping("/session/{sessionId}")
     public ResponseEntity<List<SessionAttendanceRecordResponse>> getAttendanceForSession(
             @PathVariable Long sessionId) {
@@ -54,6 +80,12 @@ public class AttendanceController {
         return ResponseEntity.ok(records);
     }
 
+    /**
+     * Returns the full attendance history for a student.
+     *
+     * @param studentId student ID
+     * @return the student's attendance records
+     */
     @GetMapping("/student/{studentId}")
     public ResponseEntity<List<Attendance>> getAttendanceHistoryForStudent(
             @PathVariable Long studentId) {
@@ -62,6 +94,11 @@ public class AttendanceController {
         return ResponseEntity.ok(history);
     }
 
+    /**
+     * Returns the authenticated user from the security context, or 401 if none.
+     *
+     * @return the authenticated {@link User}
+     */
     private User getAuthenticatedUser() {
         return authService.getAuthenticatedUserFromContext()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));

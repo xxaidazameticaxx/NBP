@@ -7,6 +7,12 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/**
+ * JDBC repository for attendance analytics and reporting.
+ * <p>
+ * Generates attendance summaries for courses and student attendance history,
+ * computing presence percentages and session counts.
+ */
 @Repository
 public class ReportRepository {
 

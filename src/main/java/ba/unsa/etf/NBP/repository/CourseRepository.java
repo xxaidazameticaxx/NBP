@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Course} rows in {@code NBP_COURSE}.
+ * <p>
+ * Manages course definitions including professor and department relationships,
+ * with lookups by professor ID or department ID for filtering.
+ */
 @Repository
 public class CourseRepository {
 

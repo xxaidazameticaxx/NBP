@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link Professor} rows in {@code NBP_PROFESSOR}.
+ * <p>
+ * Links professor records to users and departments, providing lookups for
+ * authorization checks on course and session ownership.
+ */
 @Repository
 public class ProfessorRepository {
 

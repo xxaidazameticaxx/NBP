@@ -21,6 +21,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Attendance registration, manual overrides, and auto-absence bulk insert.
+ * <p>
+ * Students register their presence by submitting the professor's 6-digit
+ * session code. When a session is closed, {@link #autoMarkAbsentForSession(CourseSession)}
+ * inserts an "absent" record for every enrolled student who did not check in.
+ */
 @Service
 public class AttendanceService {
 
@@ -45,30 +52,73 @@ public class AttendanceService {
         this.courseRepository = courseRepository;
     }
 
+    /**
+     * Returns every attendance record.
+     *
+     * @return all attendance rows
+     */
     public List<Attendance> findAll() {
         return attendanceRepository.findAll();
     }
 
+    /**
+     * Looks up an attendance row by ID.
+     *
+     * @param id attendance ID
+     * @return the row, or {@link Optional#empty()} if missing
+     */
     public Optional<Attendance> findById(Long id) {
         return attendanceRepository.findById(id);
     }
 
+    /**
+     * Inserts an attendance row directly (low level).
+     *
+     * @param attendance attendance row to insert
+     */
     public void save(Attendance attendance) {
         attendanceRepository.save(attendance);
     }
 
+    /**
+     * Updates an attendance row.
+     *
+     * @param attendance row with updated fields (ID required)
+     */
     public void update(Attendance attendance) {
         attendanceRepository.update(attendance);
     }
 
+    /**
+     * Deletes an attendance row by ID.
+     *
+     * @param id attendance ID
+     */
     public void deleteById(Long id) {
         attendanceRepository.deleteById(id);
     }
 
+    /**
+     * Returns every attendance row for the given student.
+     *
+     * @param studentId student ID
+     * @return attendance history for that student
+     */
     public List<Attendance> findByStudentId(Long studentId) {
         return attendanceRepository.findByStudentId(studentId);
     }
 
+    /**
+     * Registers the caller as present using the session code the professor shared.
+     * <p>
+     * Rejects if the session is closed, the user is not a student, the student is
+     * not enrolled in the course, or attendance was already registered for the session.
+     *
+     * @param sessionCode the 6-digit code
+     * @param currentUser the authenticated student
+     * @return the newly created attendance row with its ID
+     * @throws ResponseStatusException on any validation failure
+     */
     public Attendance registerAttendance(String sessionCode, User currentUser) {
         if (sessionCode == null || sessionCode.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionCode is required");
@@ -103,6 +153,16 @@ public class AttendanceService {
         return attendance;
     }
 
+    /**
+     * Inserts an "absent" row for every enrolled student who did not register
+     * attendance for the given closed session.
+     * <p>
+     * Invoked during session close to finalize the roster.
+     *
+     * @param session the closed session
+     * @return number of absent rows inserted
+     * @throws ResponseStatusException 400 if the session is invalid or still open
+     */
     public int autoMarkAbsentForSession(CourseSession session) {
         if (session == null || session.getId() == null || session.getCourseId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid session");
@@ -113,6 +173,16 @@ public class AttendanceService {
         return attendanceRepository.autoInsertAbsentForMissingEnrolledStudents(session.getCourseId(), session.getId());
     }
 
+    /**
+     * Changes the presence flag on an attendance row. Only the session's owning professor may call this.
+     *
+     * @param attendanceId attendance row ID
+     * @param isPresent    new value for the present flag
+     * @param currentUser  the authenticated professor
+     * @return the updated attendance row
+     * @throws ResponseStatusException 403 if caller is not the owning professor,
+     *         404 if the attendance, session, or course is missing
+     */
     public Attendance overrideAttendancePresence(Long attendanceId, boolean isPresent, User currentUser) {
         Professor professor = professorRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a professor"));
@@ -135,11 +205,29 @@ public class AttendanceService {
         return attendance;
     }
 
+    /**
+     * Returns attendance rows for one session, with student names attached,
+     * for display in the professor's dashboard.
+     *
+     * @param courseSessionId session ID
+     * @param currentUser     the authenticated professor
+     * @return attendance records with student info
+     */
     public List<SessionAttendanceRecordResponse> getAttendanceForSession(Long courseSessionId, User currentUser) {
         assertProfessorOwnsSession(courseSessionId, currentUser);
         return attendanceRepository.findSessionAttendanceWithStudentNames(courseSessionId);
     }
 
+    /**
+     * Returns the full attendance history for a student.
+     * <p>
+     * Students may only view their own history; all other roles are allowed.
+     *
+     * @param studentId   target student ID
+     * @param currentUser the authenticated user
+     * @return attendance records
+     * @throws ResponseStatusException 403 if a student tries to view someone else's history
+     */
     public List<Attendance> getAttendanceHistoryForStudent(Long studentId, User currentUser) {
         Long roleId = currentUser.getRole() != null ? currentUser.getRole().getId() : null;
         if (roleId == null) {
@@ -157,6 +245,13 @@ public class AttendanceService {
         return attendanceRepository.findByStudentId(studentId);
     }
 
+    /**
+     * Throws 403 unless the calling user is the owning professor of the given session's course.
+     *
+     * @param courseSessionId session ID
+     * @param currentUser     the authenticated user
+     * @throws ResponseStatusException on any ownership or lookup failure
+     */
     private void assertProfessorOwnsSession(Long courseSessionId, User currentUser) {
         Professor professor = professorRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a professor"));

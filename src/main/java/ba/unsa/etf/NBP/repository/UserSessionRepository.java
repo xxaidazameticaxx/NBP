@@ -9,6 +9,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC repository for {@link UserSession} rows in {@code NBP_USER_SESSION}.
+ * <p>
+ * Tracks JWT session tokens with expiration, supporting active session lookups
+ * and user-specific session management for token validation.
+ */
 @Repository
 public class UserSessionRepository {
 
