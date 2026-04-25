@@ -11,6 +11,12 @@ public class CreateUserRequest {
     private String email;
     private Long roleId;
     private LocalDate birthDate;
+    private String indexNumber;
+    private Long studyProgramId;
+    private Long enrollmentYear;
+    private String title;
+    private Long departmentId;
+    private String officeLocation;
 
     public CreateUserRequest() {
     }
@@ -69,6 +75,54 @@ public class CreateUserRequest {
 
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
+    }
+
+    public String getIndexNumber() {
+        return indexNumber;
+    }
+
+    public void setIndexNumber(String indexNumber) {
+        this.indexNumber = indexNumber;
+    }
+
+    public Long getStudyProgramId() {
+        return studyProgramId;
+    }
+
+    public void setStudyProgramId(Long studyProgramId) {
+        this.studyProgramId = studyProgramId;
+    }
+
+    public Long getEnrollmentYear() {
+        return enrollmentYear;
+    }
+
+    public void setEnrollmentYear(Long enrollmentYear) {
+        this.enrollmentYear = enrollmentYear;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public String getOfficeLocation() {
+        return officeLocation;
+    }
+
+    public void setOfficeLocation(String officeLocation) {
+        this.officeLocation = officeLocation;
     }
 }
 

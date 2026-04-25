@@ -108,10 +108,15 @@ public class AuthController {
 
     /**
      * Creates a new user account. Admin only.
+     * <p>
+     * The payload is role-aware: STUDENT users require student profile fields,
+     * PROFESSOR users require professor profile fields, and ADMIN users must not
+     * include profile-specific fields. On success, the service also creates the
+     * corresponding {@code NBP_STUDENT} or {@code NBP_PROFESSOR} row.
      *
      * @param request new user's details (username, password, role, etc.)
      * @return {@code 201 Created} on success, or {@code 400 Bad Request} if
-     *         validation fails or the username is taken
+     *         validation fails (including role/profile mismatch or bad FK values)
      */
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")

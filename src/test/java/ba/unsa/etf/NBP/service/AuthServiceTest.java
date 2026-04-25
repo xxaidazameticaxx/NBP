@@ -4,9 +4,17 @@ import ba.unsa.etf.NBP.dto.auth.AuthUserResponse;
 import ba.unsa.etf.NBP.dto.auth.CreateUserRequest;
 import ba.unsa.etf.NBP.dto.auth.CreatedUserResponse;
 import ba.unsa.etf.NBP.dto.auth.LoginRequest;
+import ba.unsa.etf.NBP.model.Department;
 import ba.unsa.etf.NBP.model.Role;
+import ba.unsa.etf.NBP.model.StudyProgram;
+import ba.unsa.etf.NBP.model.Student;
+import ba.unsa.etf.NBP.model.Professor;
 import ba.unsa.etf.NBP.model.User;
 import ba.unsa.etf.NBP.model.UserSession;
+import ba.unsa.etf.NBP.repository.DepartmentRepository;
+import ba.unsa.etf.NBP.repository.ProfessorRepository;
+import ba.unsa.etf.NBP.repository.StudentRepository;
+import ba.unsa.etf.NBP.repository.StudyProgramRepository;
 import ba.unsa.etf.NBP.repository.UserRepository;
 import ba.unsa.etf.NBP.repository.UserSessionRepository;
 import ba.unsa.etf.NBP.security.JwtTokenService;
@@ -47,6 +55,18 @@ class AuthServiceTest {
     private UserSessionRepository userSessionRepository;
 
     @Mock
+    private StudentRepository studentRepository;
+
+    @Mock
+    private ProfessorRepository professorRepository;
+
+    @Mock
+    private StudyProgramRepository studyProgramRepository;
+
+    @Mock
+    private DepartmentRepository departmentRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -56,7 +76,16 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, userSessionRepository, passwordEncoder, jwtTokenService);
+        authService = new AuthService(
+                userRepository,
+                userSessionRepository,
+                studentRepository,
+                professorRepository,
+                studyProgramRepository,
+                departmentRepository,
+                passwordEncoder,
+                jwtTokenService
+        );
     }
 
     @Test
@@ -243,9 +272,14 @@ class AuthServiceTest {
         request.setEmail("new@student.ba");
         request.setRoleId(1L);
         request.setBirthDate(LocalDate.of(2001, 5, 10));
+        request.setIndexNumber("IB200001");
+        request.setStudyProgramId(5L);
+        request.setEnrollmentYear(2020L);
 
         Role role = new Role(1L, "student");
+        StudyProgram studyProgram = new StudyProgram(5L, "CS", "CS", 1L, 3L, "BSc");
         when(userRepository.existsByUsername("newstudent")).thenReturn(false);
+        when(studyProgramRepository.findById(5L)).thenReturn(Optional.of(studyProgram));
         when(userRepository.findRoleById(1L)).thenReturn(Optional.of(role));
         when(passwordEncoder.encode("raw-pass")).thenReturn("bcrypt-hash");
         when(userRepository.createUser(any(User.class))).thenAnswer(invocation -> {
@@ -268,6 +302,54 @@ class AuthServiceTest {
         User persisted = userCaptor.getValue();
         assertEquals("bcrypt-hash", persisted.getPassword());
         assertNull(persisted.getAddressId());
+
+        ArgumentCaptor<Student> studentCaptor = ArgumentCaptor.forClass(Student.class);
+        verify(studentRepository).save(studentCaptor.capture());
+        Student persistedStudent = studentCaptor.getValue();
+        assertEquals(101L, persistedStudent.getUserId());
+        assertEquals("IB200001", persistedStudent.getIndexNumber());
+        assertEquals(5L, persistedStudent.getStudyProgramId());
+        verify(professorRepository, never()).save(any(Professor.class));
+    }
+
+    @Test
+    void createUserByAdminCreatesProfessorProfileForProfessorRole() {
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("newprof");
+        request.setPassword("raw-pass");
+        request.setFirstName("New");
+        request.setLastName("Professor");
+        request.setEmail("new@prof.ba");
+        request.setRoleId(2L);
+        request.setBirthDate(LocalDate.of(1985, 4, 1));
+        request.setDepartmentId(3L);
+        request.setTitle("Docent");
+        request.setOfficeLocation("A1-12");
+
+        Role role = new Role(2L, "professor");
+        Department department = new Department(3L, "CS", "CS", "desc");
+        when(userRepository.existsByUsername("newprof")).thenReturn(false);
+        when(departmentRepository.findById(3L)).thenReturn(Optional.of(department));
+        when(userRepository.findRoleById(2L)).thenReturn(Optional.of(role));
+        when(passwordEncoder.encode("raw-pass")).thenReturn("bcrypt-hash");
+        when(userRepository.createUser(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId(205L);
+            return Optional.of(user);
+        });
+
+        Optional<CreatedUserResponse> result = authService.createUserByAdmin(request);
+
+        assertTrue(result.isPresent());
+        assertEquals(205L, result.get().getUserId());
+
+        ArgumentCaptor<Professor> professorCaptor = ArgumentCaptor.forClass(Professor.class);
+        verify(professorRepository).save(professorCaptor.capture());
+        Professor persistedProfessor = professorCaptor.getValue();
+        assertEquals(205L, persistedProfessor.getUserId());
+        assertEquals(3L, persistedProfessor.getDepartmentId());
+        assertEquals("Docent", persistedProfessor.getTitle());
+        verify(studentRepository, never()).save(any(Student.class));
     }
 
     @Test
@@ -285,6 +367,8 @@ class AuthServiceTest {
 
         assertFalse(result.isPresent());
         verify(userRepository, never()).createUser(any(User.class));
+        verify(studentRepository, never()).save(any(Student.class));
+        verify(professorRepository, never()).save(any(Professor.class));
     }
 
     private User buildUser() {

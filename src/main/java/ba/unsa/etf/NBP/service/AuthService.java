@@ -4,9 +4,15 @@ import ba.unsa.etf.NBP.dto.auth.AuthUserResponse;
 import ba.unsa.etf.NBP.dto.auth.CreateUserRequest;
 import ba.unsa.etf.NBP.dto.auth.CreatedUserResponse;
 import ba.unsa.etf.NBP.dto.auth.LoginRequest;
+import ba.unsa.etf.NBP.model.Professor;
 import ba.unsa.etf.NBP.model.Role;
+import ba.unsa.etf.NBP.model.Student;
 import ba.unsa.etf.NBP.model.User;
 import ba.unsa.etf.NBP.model.UserSession;
+import ba.unsa.etf.NBP.repository.DepartmentRepository;
+import ba.unsa.etf.NBP.repository.ProfessorRepository;
+import ba.unsa.etf.NBP.repository.StudentRepository;
+import ba.unsa.etf.NBP.repository.StudyProgramRepository;
 import ba.unsa.etf.NBP.repository.UserRepository;
 import ba.unsa.etf.NBP.repository.UserSessionRepository;
 import ba.unsa.etf.NBP.security.JwtTokenService;
@@ -15,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -26,6 +33,8 @@ import java.util.UUID;
  * Sessions are tracked in {@code NBP_USER_SESSION} and paired with a JWT access
  * token (carrying the session ID as a claim) plus a refresh token. Clients send
  * the access token via the {@code Authorization: Bearer <token>} header.
+ * Admin user creation is role-aware and can auto-provision {@code NBP_STUDENT}
+ * or {@code NBP_PROFESSOR} rows together with {@code NBP.NBP_USER}.
  */
 @Service
 public class AuthService {
@@ -42,15 +51,27 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
+    private final StudentRepository studentRepository;
+    private final ProfessorRepository professorRepository;
+    private final StudyProgramRepository studyProgramRepository;
+    private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
 
     public AuthService(UserRepository userRepository,
                        UserSessionRepository userSessionRepository,
+                       StudentRepository studentRepository,
+                       ProfessorRepository professorRepository,
+                       StudyProgramRepository studyProgramRepository,
+                       DepartmentRepository departmentRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenService jwtTokenService) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
+        this.studentRepository = studentRepository;
+        this.professorRepository = professorRepository;
+        this.studyProgramRepository = studyProgramRepository;
+        this.departmentRepository = departmentRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
     }
@@ -146,11 +167,24 @@ public class AuthService {
      * Creates a new user with a bcrypt-hashed password.
      * <p>
      * Rejects the request if any field is missing, the role is not one of
-     * STUDENT/PROFESSOR/ADMIN, or the username is already taken.
+     * STUDENT/PROFESSOR/ADMIN, the username is already taken, or role-specific
+     * fields are invalid.
+     * <p>
+     * Role-specific behavior:
+     * <ul>
+     *   <li>STUDENT ({@code roleId=1}): requires {@code indexNumber} and a valid
+     *       {@code studyProgramId}; creates {@code NBP_STUDENT}</li>
+     *   <li>PROFESSOR ({@code roleId=2}): requires a valid {@code departmentId};
+     *       creates {@code NBP_PROFESSOR}</li>
+     *   <li>ADMIN ({@code roleId=3}): creates only {@code NBP.NBP_USER} and
+     *       rejects profile-specific fields</li>
+     * </ul>
+     * The method is transactional so user/profile inserts succeed or fail together.
      *
      * @param request the new user's details
      * @return the created user, or {@link Optional#empty()} on validation failure
      */
+    @Transactional
     public Optional<CreatedUserResponse> createUserByAdmin(CreateUserRequest request) {
         if (request == null
                 || isBlank(request.getUsername())
@@ -164,6 +198,10 @@ public class AuthService {
         }
 
         if (!isSupportedRoleId(request.getRoleId()) || userRepository.existsByUsername(request.getUsername())) {
+            return Optional.empty();
+        }
+
+        if (!hasValidRoleSpecificFields(request)) {
             return Optional.empty();
         }
 
@@ -183,7 +221,29 @@ public class AuthService {
         user.setAddressId(null);
         user.setRole(role.get());
 
-        return userRepository.createUser(user).map(this::toCreatedUserResponse);
+        Optional<User> createdUser = userRepository.createUser(user);
+        if (createdUser.isEmpty()) {
+            return Optional.empty();
+        }
+
+        User persistedUser = createdUser.get();
+        if (STUDENT_ROLE_ID.equals(request.getRoleId())) {
+            Student student = new Student();
+            student.setUserId(persistedUser.getId());
+            student.setIndexNumber(request.getIndexNumber());
+            student.setStudyProgramId(request.getStudyProgramId());
+            student.setEnrollmentYear(request.getEnrollmentYear());
+            studentRepository.save(student);
+        } else if (PROFESSOR_ROLE_ID.equals(request.getRoleId())) {
+            Professor professor = new Professor();
+            professor.setUserId(persistedUser.getId());
+            professor.setTitle(request.getTitle());
+            professor.setDepartmentId(request.getDepartmentId());
+            professor.setOfficeLocation(request.getOfficeLocation());
+            professorRepository.save(professor);
+        }
+
+        return Optional.of(toCreatedUserResponse(persistedUser));
     }
 
     /**
@@ -374,6 +434,55 @@ public class AuthService {
      */
     private boolean isSupportedRoleId(Long roleId) {
         return STUDENT_ROLE_ID.equals(roleId) || PROFESSOR_ROLE_ID.equals(roleId) || ADMIN_ROLE_ID.equals(roleId);
+    }
+
+    /**
+     * Validates role-specific payload rules and required foreign-key references.
+     *
+     * @param request user creation request
+     * @return {@code true} when payload matches the selected role
+     */
+    private boolean hasValidRoleSpecificFields(CreateUserRequest request) {
+        Long roleId = request.getRoleId();
+
+        if (STUDENT_ROLE_ID.equals(roleId)) {
+            return !isBlank(request.getIndexNumber())
+                    && request.getStudyProgramId() != null
+                    && studyProgramRepository.findById(request.getStudyProgramId()).isPresent()
+                    && !hasAnyProfessorFields(request);
+        }
+
+        if (PROFESSOR_ROLE_ID.equals(roleId)) {
+            return request.getDepartmentId() != null
+                    && departmentRepository.findById(request.getDepartmentId()).isPresent()
+                    && !hasAnyStudentFields(request);
+        }
+
+        return !hasAnyStudentFields(request) && !hasAnyProfessorFields(request);
+    }
+
+    /**
+     * Checks whether any student-only fields are present.
+     *
+     * @param request user creation request
+     * @return {@code true} if at least one student-only field is populated
+     */
+    private boolean hasAnyStudentFields(CreateUserRequest request) {
+        return !isBlank(request.getIndexNumber())
+                || request.getStudyProgramId() != null
+                || request.getEnrollmentYear() != null;
+    }
+
+    /**
+     * Checks whether any professor-only fields are present.
+     *
+     * @param request user creation request
+     * @return {@code true} if at least one professor-only field is populated
+     */
+    private boolean hasAnyProfessorFields(CreateUserRequest request) {
+        return !isBlank(request.getTitle())
+                || request.getDepartmentId() != null
+                || !isBlank(request.getOfficeLocation());
     }
 
     /**
