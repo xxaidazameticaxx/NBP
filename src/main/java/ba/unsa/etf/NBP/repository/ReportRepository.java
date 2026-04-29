@@ -2,10 +2,13 @@ package ba.unsa.etf.NBP.repository;
 
 import ba.unsa.etf.NBP.dto.report.CourseAttendanceReportDto;
 import ba.unsa.etf.NBP.dto.report.StudentAttendanceReportDto;
+import ba.unsa.etf.NBP.model.Report;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JDBC repository for attendance analytics and reporting.
@@ -20,6 +23,77 @@ public class ReportRepository {
 
     public ReportRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+    }
+
+    private final RowMapper<Report> rowMapper = (rs, rowNum) -> {
+        Report report = new Report();
+        report.setId(rs.getLong("ID"));
+        report.setType(rs.getString("TYPE"));
+        report.setContent(rs.getBytes("CONTENT"));
+        return report;
+    };
+
+    /**
+     * Returns all saved reports.
+     *
+     * @return list of all reports
+     */
+    public List<Report> findAll() {
+        String sql = "SELECT * FROM NBP_REPORT";
+        return jdbcTemplate.query(sql, rowMapper);
+    }
+
+    /**
+     * Finds a saved report by its ID.
+     *
+     * @param id report ID
+     * @return the report, or empty if not found
+     */
+    public Optional<Report> findById(Long id) {
+        String sql = "SELECT * FROM NBP_REPORT WHERE ID = ?";
+        List<Report> results = jdbcTemplate.query(sql, rowMapper, id);
+        return results.stream().findFirst();
+    }
+
+    /**
+     * Finds all saved reports matching the given type.
+     *
+     * @param type report type
+     * @return list of matching reports
+     */
+    public List<Report> findByType(String type) {
+        String sql = "SELECT * FROM NBP_REPORT WHERE TYPE = ?";
+        return jdbcTemplate.query(sql, rowMapper, type);
+    }
+
+    /**
+     * Inserts a new report into the database.
+     *
+     * @param report report to save
+     */
+    public void save(Report report) {
+        String sql = "INSERT INTO NBP_REPORT (TYPE, CONTENT) VALUES (?, ?)";
+        jdbcTemplate.update(sql, report.getType(), report.getContent());
+    }
+
+    /**
+     * Updates an existing report.
+     *
+     * @param report report with updated fields
+     */
+    public void update(Report report) {
+        String sql = "UPDATE NBP_REPORT SET TYPE = ?, CONTENT = ? WHERE ID = ?";
+        jdbcTemplate.update(sql, report.getType(), report.getContent(), report.getId());
+    }
+
+    /**
+     * Deletes a report by its ID.
+     *
+     * @param id report ID
+     */
+    public void deleteById(Long id) {
+        String sql = "DELETE FROM NBP_REPORT WHERE ID = ?";
+        jdbcTemplate.update(sql, id);
     }
 
     public List<CourseAttendanceReportDto> getCourseAttendanceReport(Long courseId) {
