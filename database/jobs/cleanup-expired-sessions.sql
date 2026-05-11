@@ -29,4 +29,3 @@ BEGIN
         comments        => 'Deleted expired sessions from NBP_USER_SESSION every 6 hours'
     );
 END;
-/
