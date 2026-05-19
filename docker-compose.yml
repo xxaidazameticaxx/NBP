@@ -8,3 +8,7 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      SPRING_DATA_MONGODB_URI: ${NBP_MONGODB_URI}
+      SPRING_DATA_MONGODB_DATABASE: ${NBP_MONGODB_DATABASE}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
