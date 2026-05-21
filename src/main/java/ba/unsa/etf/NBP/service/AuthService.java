@@ -4,6 +4,7 @@ import ba.unsa.etf.NBP.dto.auth.AuthUserResponse;
 import ba.unsa.etf.NBP.dto.auth.CreateUserRequest;
 import ba.unsa.etf.NBP.dto.auth.CreatedUserResponse;
 import ba.unsa.etf.NBP.dto.auth.LoginRequest;
+import ba.unsa.etf.NBP.model.AuthLogAction;
 import ba.unsa.etf.NBP.model.Professor;
 import ba.unsa.etf.NBP.model.Role;
 import ba.unsa.etf.NBP.model.Student;
@@ -57,6 +58,7 @@ public class AuthService {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
+    private final AuthLogService authLogService;
 
     public AuthService(UserRepository userRepository,
                        UserSessionRepository userSessionRepository,
@@ -65,7 +67,8 @@ public class AuthService {
                        StudyProgramRepository studyProgramRepository,
                        DepartmentRepository departmentRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtTokenService jwtTokenService) {
+                       JwtTokenService jwtTokenService,
+                       AuthLogService authLogService) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
         this.studentRepository = studentRepository;
@@ -74,6 +77,7 @@ public class AuthService {
         this.departmentRepository = departmentRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
+        this.authLogService = authLogService;
     }
 
     /**
@@ -108,6 +112,8 @@ public class AuthService {
         userSession.setCreatedAt(now);
         userSession.setExpiresAt(now.plusMinutes(30));
         userSessionRepository.save(userSession);
+
+        authLogService.logEvent(user.getId(), AuthLogAction.LOGIN);
 
         return Optional.of(toAuthUserResponse(user, newSessionId, true));
     }
@@ -252,8 +258,30 @@ public class AuthService {
      * @param authorizationHeader raw token or {@code Bearer} header value
      */
     public void logout(String authorizationHeader) {
-        Optional<String> sessionId = extractSessionIdFromToken(authorizationHeader);
-        sessionId.ifPresent(userSessionRepository::deleteBySessionId);
+        Optional<String> rawToken = extractToken(authorizationHeader);
+        if (rawToken.isEmpty()) {
+            return;
+        }
+
+        Optional<Claims> claimsOptional = jwtTokenService.parseClaims(rawToken.get());
+        if (claimsOptional.isEmpty()) {
+            return;
+        }
+
+        Claims claims = claimsOptional.get();
+        if (jwtTokenService.isRefreshToken(claims)) {
+            return;
+        }
+
+        Long userId = jwtTokenService.extractUserId(claims);
+        if (userId != null) {
+            authLogService.logEvent(userId, AuthLogAction.LOGOUT);
+        }
+
+        String sessionId = jwtTokenService.extractSessionId(claims);
+        if (sessionId != null && !sessionId.isBlank()) {
+            userSessionRepository.deleteBySessionId(sessionId);
+        }
     }
 
     /**

@@ -18,6 +18,11 @@ spring:
   application:
     name: NBP
 
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:${MONGODB_URI:mongodb://localhost:27017/nbp_logs}}
+      database: ${SPRING_DATA_MONGODB_DATABASE:nbp_logs}
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}

@@ -72,6 +72,9 @@ class AuthServiceTest {
     @Mock
     private JwtTokenService jwtTokenService;
 
+    @Mock
+    private AuthLogService authLogService;
+
     private AuthService authService;
 
     @BeforeEach
@@ -84,7 +87,8 @@ class AuthServiceTest {
                 studyProgramRepository,
                 departmentRepository,
                 passwordEncoder,
-                jwtTokenService
+                jwtTokenService,
+                authLogService
         );
     }
 
@@ -101,6 +105,7 @@ class AuthServiceTest {
         assertFalse(result.isPresent());
         verify(passwordEncoder, never()).matches(any(), any());
         verify(userSessionRepository, never()).save(any());
+        verify(authLogService, never()).logEvent(any(), any());
     }
 
     @Test
@@ -118,6 +123,7 @@ class AuthServiceTest {
         assertFalse(result.isPresent());
         verify(userSessionRepository, never()).save(any());
         verify(userSessionRepository, never()).deleteById(any());
+        verify(authLogService, never()).logEvent(any(), any());
     }
 
     @Test
@@ -151,6 +157,8 @@ class AuthServiceTest {
         assertNotNull(savedSession.getCreatedAt());
         assertNotNull(savedSession.getExpiresAt());
         assertTrue(savedSession.getExpiresAt().isAfter(savedSession.getCreatedAt()));
+
+        verify(authLogService, times(1)).logEvent(eq(user.getId()), eq(ba.unsa.etf.NBP.model.AuthLogAction.LOGIN));
     }
 
     @Test
