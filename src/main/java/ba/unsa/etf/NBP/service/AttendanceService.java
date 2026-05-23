@@ -17,6 +17,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.sql.DataSource;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,19 +41,22 @@ public class AttendanceService {
     private final StudentRepository studentRepository;
     private final ProfessorRepository professorRepository;
     private final CourseRepository courseRepository;
+    private final DataSource dataSource;
 
     public AttendanceService(AttendanceRepository attendanceRepository,
                              CourseSessionRepository courseSessionRepository,
                              EnrollmentRepository enrollmentRepository,
                              StudentRepository studentRepository,
                              ProfessorRepository professorRepository,
-                             CourseRepository courseRepository) {
+                             CourseRepository courseRepository,
+                             DataSource dataSource) {
         this.attendanceRepository = attendanceRepository;
         this.courseSessionRepository = courseSessionRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.studentRepository = studentRepository;
         this.professorRepository = professorRepository;
         this.courseRepository = courseRepository;
+        this.dataSource = dataSource;
     }
 
     /**
@@ -124,33 +131,28 @@ public class AttendanceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionCode is required");
         }
 
-        CourseSession session = courseSessionRepository.findBySessionCode(sessionCode)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
-
-        if (session.getSessionEndTime() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session is closed");
-        }
-
         Student student = studentRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not a student"));
 
-        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), session.getCourseId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student is not enrolled in this course");
+        try (Connection conn = dataSource.getConnection()) {
+            CallableStatement cs = conn.prepareCall(
+                    "{call NBPT3.ATTENDANCE_PKG.REGISTER_ATTENDANCE(?, ?)}"
+            );
+            cs.setString(1, sessionCode);
+            cs.setLong(2, student.getId());
+            cs.execute();
+
+        } catch (SQLException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
 
-        if (attendanceRepository.existsByStudentIdAndCourseSessionId(student.getId(), session.getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Attendance already registered for this session");
-        }
+        // Dohvati kreirani attendance iz baze da vratimo response
+        CourseSession session = courseSessionRepository.findBySessionCode(sessionCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
 
-        Attendance attendance = new Attendance();
-        attendance.setStudentId(student.getId());
-        attendance.setCourseSessionId(session.getId());
-        attendance.setPresent(true);
-        attendance.setMarkedAt(LocalDateTime.now());
-
-        Long id = attendanceRepository.saveAndReturnId(attendance);
-        attendance.setId(id);
-        return attendance;
+        return attendanceRepository
+                .findByStudentIdAndCourseSessionId(student.getId(), session.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Attendance not found after insert"));
     }
 
     /**

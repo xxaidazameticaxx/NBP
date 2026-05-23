@@ -8,6 +8,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.sql.DataSource;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,19 +35,22 @@ public class CourseSessionService {
     private final RoomRepository roomRepository;
     private final AttendanceService attendanceService;
     private final Random random = new Random();
+    private final DataSource dataSource;
 
     public CourseSessionService(CourseSessionRepository courseSessionRepository,
                                 CourseRepository courseRepository,
                                 ProfessorRepository professorRepository,
                                 TimetableRepository timetableRepository,
                                 RoomRepository roomRepository,
-                                AttendanceService attendanceService) {
+                                AttendanceService attendanceService,
+                                DataSource dataSource) {
         this.courseSessionRepository = courseSessionRepository;
         this.courseRepository = courseRepository;
         this.professorRepository = professorRepository;
         this.timetableRepository = timetableRepository;
         this.roomRepository = roomRepository;
         this.attendanceService = attendanceService;
+        this.dataSource = dataSource;
     }
 
     /**
@@ -114,41 +122,46 @@ public class CourseSessionService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this course");
         }
 
-        if (courseSessionRepository.findOpenByCourseId(courseId).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An open session already exists for this course");
-        }
-
-        Long roomId;
         Long timetableId = null;
+        Long roomId = null;
 
         if (request != null && request.getTimetableId() != null) {
-            Timetable timetable = timetableRepository.findById(request.getTimetableId())
+            timetableId = request.getTimetableId();
+            Timetable timetable = timetableRepository.findById(timetableId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Timetable not found"));
             roomId = timetable.getRoomId();
-            timetableId = timetable.getId();
         } else if (request != null && request.getRoomId() != null) {
-            roomRepository.findById(request.getRoomId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room not found"));
             roomId = request.getRoomId();
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Either timetableId or roomId must be provided");
         }
 
-        String sessionCode = generateUniqueSessionCode();
+        try (Connection conn = dataSource.getConnection()) {
+            CallableStatement cs = conn.prepareCall(
+                    "{call NBPT3.ATTENDANCE_PKG.OPEN_SESSION(?, ?, ?, ?, ?)}"
+            );
+            cs.setLong(1, courseId);
+            if (timetableId != null) cs.setLong(2, timetableId);
+            else cs.setNull(2, Types.NUMERIC);
+            cs.setLong(3, roomId);
+            cs.registerOutParameter(4, Types.NUMERIC);
+            cs.registerOutParameter(5, Types.VARCHAR);
+            cs.execute();
 
-        CourseSession session = new CourseSession();
-        session.setCourseId(courseId);
-        session.setSessionStartTime(LocalDateTime.now());
-        session.setSessionEndTime(null);
-        session.setSessionCode(sessionCode);
-        session.setRoomId(roomId);
-        session.setTimetableId(timetableId);
+            Long sessionId = cs.getLong(4);
+            String sessionCode = cs.getString(5);
 
-        Long id = courseSessionRepository.saveAndReturnId(session);
-        session.setId(id);
+            CourseSessionResponse response = new CourseSessionResponse();
+            response.setId(sessionId);
+            response.setSessionCode(sessionCode);
+            response.setCourseId(courseId);
+            response.setRoomId(roomId);
+            response.setTimetableId(timetableId);
+            return response;
 
-        Room room = roomRepository.findById(roomId).orElse(null);
-        return toResponse(session, room);
+        } catch (SQLException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
     }
 
     /**
@@ -174,19 +187,23 @@ public class CourseSessionService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not own this session");
         }
 
-        if (session.getSessionEndTime() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session is already closed");
+        try (Connection conn = dataSource.getConnection()) {
+            CallableStatement cs = conn.prepareCall(
+                    "{call NBPT3.ATTENDANCE_PKG.CLOSE_SESSION(?)}"
+            );
+            cs.setLong(1, sessionId);
+            cs.execute();
+
+        } catch (SQLException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
 
-        session.setSessionEndTime(LocalDateTime.now());
-        courseSessionRepository.update(session);
+        CourseSession updatedSession = courseSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
 
-        attendanceService.autoMarkAbsentForSession(session);
-
-        Room room = roomRepository.findById(session.getRoomId()).orElse(null);
-        return toResponse(session, room);
+        Room room = roomRepository.findById(updatedSession.getRoomId()).orElse(null);
+        return toResponse(updatedSession, room);
     }
-
 /**
      * Returns the full session history for a course.
      *
