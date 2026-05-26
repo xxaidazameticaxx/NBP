@@ -27,6 +27,7 @@ class AttendanceServiceTest {
     @Mock private StudentRepository studentRepository;
     @Mock private ProfessorRepository professorRepository;
     @Mock private CourseRepository courseRepository;
+    @Mock private AttendanceAlertService alertService;
 
     private AttendanceService service;
 
@@ -38,7 +39,7 @@ class AttendanceServiceTest {
     @BeforeEach
     void setUp() {
         service = new AttendanceService(attendanceRepository, courseSessionRepository, enrollmentRepository,
-                studentRepository, professorRepository, courseRepository);
+                studentRepository, professorRepository, courseRepository, alertService);
 
         studentUser = new User(1L, "stud1", "pass", "Ana", "A", "ana@etf.ba", null, null, new Role(1L, "Student"));
         professorUser = new User(2L, "prof1", "pass", "Prof", "P", "prof@etf.ba", null, null, new Role(2L, "Professor"));
