@@ -33,6 +33,7 @@ class AttendanceServiceTest {
     @Mock private DataSource dataSource;
     @Mock private Connection connection;
     @Mock private CallableStatement callableStatement;
+    @Mock private AttendanceAlertService alertService;
 
     private AttendanceService service;
 
@@ -48,6 +49,7 @@ class AttendanceServiceTest {
 
         when(dataSource.getConnection()).thenReturn(connection);
         when(connection.prepareCall(any())).thenReturn(callableStatement);
+                studentRepository, professorRepository, courseRepository, alertService);
 
         studentUser = new User(1L, "stud1", "pass", "Ana", "A", "ana@etf.ba", null, null, new Role(1L, "Student"));
         professorUser = new User(2L, "prof1", "pass", "Prof", "P", "prof@etf.ba", null, null, new Role(2L, "Professor"));

@@ -167,4 +167,11 @@ public class AttendanceRepository {
                 "(SELECT ID FROM NBP_COURSE_SESSION WHERE COURSE_ID = ?)";
         jdbcTemplate.update(sql, studentId, courseId);
     }
+
+    public List<Attendance> findByCourseId(Long courseId) {
+        String sql = "SELECT a.* FROM NBP_ATTENDANCE a " +
+                "WHERE a.COURSE_SESSION_ID IN " +
+                "(SELECT ID FROM NBP_COURSE_SESSION WHERE COURSE_ID = ?)";
+        return jdbcTemplate.query(sql, rowMapper, courseId);
+    }
 }

@@ -42,6 +42,7 @@ public class AttendanceService {
     private final ProfessorRepository professorRepository;
     private final CourseRepository courseRepository;
     private final DataSource dataSource;
+    private final AttendanceAlertService alertService;
 
     public AttendanceService(AttendanceRepository attendanceRepository,
                              CourseSessionRepository courseSessionRepository,
@@ -50,6 +51,7 @@ public class AttendanceService {
                              ProfessorRepository professorRepository,
                              CourseRepository courseRepository,
                              DataSource dataSource) {
+                             AttendanceAlertService alertService) {
         this.attendanceRepository = attendanceRepository;
         this.courseSessionRepository = courseSessionRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -57,6 +59,7 @@ public class AttendanceService {
         this.professorRepository = professorRepository;
         this.courseRepository = courseRepository;
         this.dataSource = dataSource;
+        this.alertService = alertService;
     }
 
     /**
@@ -153,6 +156,13 @@ public class AttendanceService {
         return attendanceRepository
                 .findByStudentIdAndCourseSessionId(student.getId(), session.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Attendance not found after insert"));
+        Long id = attendanceRepository.saveAndReturnId(attendance);
+        attendance.setId(id);
+
+        // Trigger real-time alert analysis
+        alertService.analyzeAndCreateAlert(student.getId(), session.getCourseId());
+
+        return attendance;
     }
 
     /**
@@ -172,7 +182,13 @@ public class AttendanceService {
         if (session.getSessionEndTime() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session is not closed");
         }
-        return attendanceRepository.autoInsertAbsentForMissingEnrolledStudents(session.getCourseId(), session.getId());
+        int absentsMarked = attendanceRepository.autoInsertAbsentForMissingEnrolledStudents(session.getCourseId(), session.getId());
+
+        // Trigger real-time alert analysis for all students in this course
+        enrollmentRepository.findByCourseId(session.getCourseId())
+                .forEach(enrollment -> alertService.analyzeAndCreateAlert(enrollment.getStudentId(), session.getCourseId()));
+
+        return absentsMarked;
     }
 
     /**
@@ -204,6 +220,14 @@ public class AttendanceService {
 
         attendanceRepository.updateIsPresent(attendanceId, isPresent);
         attendance.setPresent(isPresent);
+
+        // Trigger real-time alert analysis after override
+        Student student = studentRepository.findById(attendance.getStudentId())
+                .orElse(null);
+        if (student != null) {
+            alertService.analyzeAndCreateAlert(student.getId(), session.getCourseId());
+        }
+
         return attendance;
     }
 
